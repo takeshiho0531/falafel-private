@@ -1,0 +1,7 @@
+env
+.vim
+!requirements.txt
+*.fst
+*.vcd
+__pycache__
+sim_build
