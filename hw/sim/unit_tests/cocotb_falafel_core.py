@@ -19,13 +19,13 @@ def init_mem():
     mem = {}
 
     def store_block(addr, block):
-        addr = addr/WORD_SIZE
+        addr = addr//WORD_SIZE
         (size, next_ptr) = block
         mem[addr] = size
         mem[addr+1] = next_ptr
 
     def store_word(addr, word):
-        addr = addr/WORD_SIZE
+        addr = addr//WORD_SIZE
         mem[addr] = word
 
     NULL_PTR = 0
@@ -92,10 +92,6 @@ async def mem_monitor(dut, clk, mem):
         await mem_rsp_driver.send(data)
 
 
-async def fifo_monitor(x):
-    await x
-
-
 @cocotb.test()
 async def test_simple_alloc(dut):
     """Test simple allocation"""
@@ -124,9 +120,9 @@ async def test_simple_alloc(dut):
 
     blocks = [
         Block(160, 10),
-        # Block(320, 128),
+        Block(320, 128),
         # Block(320, 32),
-        Block(320, 72),
+        # Block(320, 72),
         Block(1000, 32),
         Block(2000, 50)
     ]
@@ -138,7 +134,9 @@ async def test_simple_alloc(dut):
     #     Block(2000, 50)
     # ]
 
-    print('initial list', blocks)
+    # print('initial list', blocks)
+    print('initial list', end=' ')
+    falafel_block.print_list(blocks)
 
     falafel_block.list_to_mem(free_list_ptr, blocks, mem)
 
@@ -151,9 +149,20 @@ async def test_simple_alloc(dut):
 
     await Timer(20, units=UNITS)
 
-    await alloc_fifo_driver.push(10)
-    print('ptr:', await resp_fifo_driver.pop())
+    await alloc_fifo_driver.push(35)
+    ptr = await resp_fifo_driver.pop()
+    print('ptr:', ptr)
+    await Timer(1000, units=UNITS)
+    print('middle list', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+    print('mem[368] =', mem[368//WORD_SIZE])
+    print('mem[320] =', mem[320//WORD_SIZE])
 
-    print('final list', falafel_block.mem_to_list(free_list_ptr, mem))
+    await free_fifo_driver.push(ptr)
+    await Timer(1000, units=UNITS)
+    print('final list', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+    print('mem[368] =', mem[368//WORD_SIZE])
+    print('mem[320] =', mem[320//WORD_SIZE])
 
     await Timer(100, units=UNITS)

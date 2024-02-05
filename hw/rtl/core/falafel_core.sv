@@ -56,7 +56,20 @@ module falafel_core
     STATE_ALLOC_WAIT_REMOVE,
     STATE_WRITE_RESPONSE,
 
-    STATE_SBRK,
+    STATE_FREE_LOAD_SIZE,
+    STATE_FREE_WAIT_LOAD_SIZE,
+    STATE_FREE_LOAD_FREE_PTR,
+    STATE_FREE_WAIT_FREE_PTR,
+    STATE_FREE_LOAD_BLOCK,
+    STATE_FREE_WAIT_BLOCK,
+    STATE_FREE_PROCESS_BLOCK,
+    STATE_FREE_INSERT_BLOCK,
+    STATE_FREE_WAIT_INSERT_BLOCK,
+    STATE_FREE_UPDATE_FREELIST,
+    STATE_FREE_WAIT_UPDATE,
+
+    STATE_SBRK,  // TODO
+    STATE_ADD_BLOCK,  // TODO
     STATE_WRITE_ERROR
   } core_state_e;
 
@@ -65,14 +78,12 @@ module falafel_core
   core_state_e state_d, state_q;
   word_t alloc_size_d, alloc_size_q;
   word_t alloc_ptr_d, alloc_ptr_q;
+  word_t free_ptr_d, free_ptr_q;
   word_t freelist_ptr_d, freelist_ptr_q;
 
-  logic change_block_d, change_block_q;
-
-  word_t buffered_word_d, buffered_word_q;
   free_block_t buffered_block_d, buffered_block_q;
   word_t current_block_ptr_d, current_block_ptr_q;
-  word_t prev_block_ptr_d, prev_block_ptr_q;  // pointer to previous block's next_ptr
+  word_t prev_block_ptr_d, prev_block_ptr_q;  // pointer to previous block
   word_t next_block_ptr_d, next_block_ptr_q;  // pointer to next block
   word_t target_block_ptr_d, target_block_ptr_q;  // pointer to next block
 
@@ -104,12 +115,7 @@ module falafel_core
   free_block_t fake_block;
   assign fake_block = {word_t'(0), lsu_rsp_word};
 
-  assign buffered_word_d = (lsu_rsp_val && lsu_rsp_rdy) ? lsu_rsp_word : buffered_word_q;
-  assign buffered_block_d = change_block_d ? {buffered_block_q.size, current_block_ptr_q + BLOCK_HEADER_SIZE + alloc_size_q}
-                          : ((lsu_rsp_val && lsu_rsp_rdy) ? ((sel_block == SEL_FAKE_BLOCK) ? fake_block : lsu_rsp_block) : buffered_block_q);
-  assign current_block_ptr_d = (lsu_req_val && lsu_req_rdy) ? lsu_req_addr : current_block_ptr_q;
-  // assign prev_block_ptr_d = (lsu_req_val && lsu_req_rdy) ? current_block_ptr_q : prev_block_ptr_q;
-
+  assign buffered_block_d = (lsu_rsp_val && lsu_rsp_rdy) ? ((sel_block == SEL_FAKE_BLOCK) ? fake_block : lsu_rsp_block) : buffered_block_q;
   assign bp_block = buffered_block_q;
   assign bp_requested_size = alloc_size_q;
 
@@ -120,10 +126,11 @@ module falafel_core
     alloc_size_d = alloc_size_q;
     alloc_ptr_d = alloc_ptr_q;
     freelist_ptr_d = freelist_ptr_q;
+    free_ptr_d = free_ptr_q;
 
     sel_block = SEL_REAL_BLOCK;
-    change_block_d = 1'b0;
 
+    current_block_ptr_d = current_block_ptr_q;
     prev_block_ptr_d = prev_block_ptr_q;
     next_block_ptr_d = next_block_ptr_q;
     target_block_ptr_d = target_block_ptr_q;
@@ -132,8 +139,8 @@ module falafel_core
     lsu_rsp_rdy = 1'b0;
     lsu_req_op = LSU_OP_LOAD_WORD;
     lsu_req_addr = NULL_PTR;
-    // TOOD: lsu_req_word
-    // TOOD: lsu_req_block
+    lsu_req_word = '0;
+    lsu_req_block = '0;
 
     alloc_fifo_read_o = 1'b0;
     free_fifo_read_o = 1'b0;
@@ -154,8 +161,10 @@ module falafel_core
           alloc_size_d = alloc_fifo_dout_i;
 
         end else if (!free_fifo_empty_i) begin
+          state_d = STATE_FREE_LOAD_SIZE;
+
           free_fifo_read_o = 1'b1;
-          // TODO
+          free_ptr_d = free_fifo_dout_i;
         end
       end
 
@@ -176,6 +185,7 @@ module falafel_core
 
         if (lsu_req_rdy) begin
           state_d = STATE_ALLOC_WAIT_FREE_PTR;
+          current_block_ptr_d = lsu_req_addr;
         end
       end
 
@@ -183,8 +193,8 @@ module falafel_core
         lsu_rsp_rdy = 1'b1;
 
         if (lsu_rsp_val) begin
-          sel_block = SEL_FAKE_BLOCK;
           state_d   = STATE_ALLOC_PROCESS_BLOCK;
+          sel_block = SEL_FAKE_BLOCK;
         end
       end
 
@@ -196,6 +206,7 @@ module falafel_core
         if (lsu_req_rdy) begin
           state_d = STATE_ALLOC_WAIT_BLOCK;
 
+          current_block_ptr_d = lsu_req_addr;
           prev_block_ptr_d = current_block_ptr_q;
         end
       end
@@ -204,8 +215,8 @@ module falafel_core
         lsu_rsp_rdy = 1'b1;
 
         if (lsu_rsp_val) begin
-          sel_block = SEL_REAL_BLOCK;
           state_d   = STATE_ALLOC_PROCESS_BLOCK;
+          sel_block = SEL_REAL_BLOCK;
         end
       end
 
@@ -215,20 +226,41 @@ module falafel_core
         end else if (bp_is_null) begin
           state_d = STATE_SBRK;
         end else begin
-          next_block_ptr_d = bp_next_ptr;
           state_d = STATE_ALLOC_LOAD_BLOCK;
+          next_block_ptr_d = bp_next_ptr;
         end
       end
 
       STATE_ALLOC_CALC_SPLIT: begin
         state_d = STATE_ALLOC_STORE_NEW_BLOCK;
 
-        if ((buffered_block_q.size - alloc_size_q) > MIN_ALLOC_SIZE) begin
-          state_d = STATE_ALLOC_STORE_NEW_BLOCK;
+        target_block_ptr_d = next_block_ptr_q;
+
+        if ((buffered_block_q.size - alloc_size_q) >= MIN_ALLOC_SIZE) begin
+          state_d = STATE_ALLOC_UPDATE_OLD_BLOCK;
           alloc_ptr_d = current_block_ptr_q + WORD_SIZE;
         end else begin
           state_d = STATE_ALLOC_REMOVE_FREELIST;
           alloc_ptr_d = current_block_ptr_q + WORD_SIZE;
+        end
+      end
+
+      STATE_ALLOC_UPDATE_OLD_BLOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = current_block_ptr_q;
+        lsu_req_op   = LSU_OP_STORE_WORD;
+        lsu_req_word = alloc_size_q;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_ALLOC_WAIT_UPDATE;
+        end
+      end
+
+      STATE_ALLOC_WAIT_UPDATE: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_ALLOC_STORE_NEW_BLOCK;
         end
       end
 
@@ -240,12 +272,12 @@ module falafel_core
           (buffered_block_q.size - alloc_size_q) - BLOCK_HEADER_SIZE, buffered_block_q.next_ptr
         };
 
+        // Update this internal register so that STATE_ALLOC_REMOVE_FREELIST
+        // gets the correct value of next_ptr
+        target_block_ptr_d = lsu_req_addr;
+
         if (lsu_req_rdy) begin
           state_d = STATE_ALLOC_WAIT_STORE;
-
-          // Update this internal register so that STATE_ALLOC_REMOVE_FREELIST
-          // gets the correct value of next_ptr
-          change_block_d = 1'b1;
         end
       end
 
@@ -254,16 +286,14 @@ module falafel_core
 
         if (lsu_rsp_val) begin
           state_d = STATE_ALLOC_REMOVE_FREELIST;
-          change_block_d = 1'b1;
         end
       end
 
       STATE_ALLOC_REMOVE_FREELIST: begin
         lsu_req_val  = 1'b1;
-        lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        lsu_req_addr = prev_block_ptr_q + BLOCK_NEXT_PTR_OFFSET;
         lsu_req_op   = LSU_OP_STORE_WORD;
-        if (change_block_q) lsu_req_word = current_block_ptr_q;
-        else lsu_req_word = buffered_block_q.next_ptr;
+        lsu_req_word = target_block_ptr_q;
 
         if (lsu_req_rdy) begin
           state_d = STATE_ALLOC_WAIT_REMOVE;
@@ -285,6 +315,123 @@ module falafel_core
           resp_fifo_din_o = alloc_ptr_q;
         end
       end
+
+      STATE_FREE_LOAD_SIZE: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = free_ptr_q - WORD_SIZE;
+        lsu_req_op   = LSU_OP_LOAD_WORD;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_LOAD_SIZE;
+
+          free_ptr_d = free_ptr_q - WORD_SIZE;
+          prev_block_ptr_d = lsu_req_addr;
+          current_block_ptr_d = lsu_req_addr;
+          // prev_block_ptr_d = current_block_ptr_q;
+        end
+      end
+
+      STATE_FREE_WAIT_LOAD_SIZE: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_FREE_LOAD_FREE_PTR;
+        end
+      end
+
+      STATE_FREE_LOAD_FREE_PTR: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = falafel_config.free_list_ptr;
+        lsu_req_op   = LSU_OP_LOAD_WORD;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_FREE_PTR;
+          current_block_ptr_d = lsu_req_addr;
+        end
+      end
+
+      STATE_FREE_WAIT_FREE_PTR: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d   = STATE_FREE_PROCESS_BLOCK;
+          sel_block = SEL_FAKE_BLOCK;
+        end
+      end
+
+      STATE_FREE_LOAD_BLOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = next_block_ptr_q;
+        lsu_req_op   = LSU_OP_LOAD_BLOCK;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_BLOCK;
+
+          current_block_ptr_d = lsu_req_addr;
+          prev_block_ptr_d = current_block_ptr_q;
+        end
+      end
+
+      STATE_FREE_WAIT_BLOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d   = STATE_FREE_PROCESS_BLOCK;
+          sel_block = SEL_REAL_BLOCK;
+        end
+      end
+
+      STATE_FREE_PROCESS_BLOCK: begin
+        if (next_block_ptr_q > free_ptr_q || bp_is_null) begin
+          state_d = STATE_FREE_INSERT_BLOCK;
+        end else begin
+          state_d = STATE_FREE_LOAD_BLOCK;
+          next_block_ptr_d = bp_next_ptr;
+        end
+      end
+
+      STATE_FREE_INSERT_BLOCK: begin
+        lsu_req_val = 1'b1;
+        lsu_req_addr = free_ptr_q + WORD_SIZE;
+        lsu_req_op = LSU_OP_STORE_WORD;
+        lsu_req_word = next_block_ptr_q;
+
+        // prev_block_ptr_d = current_block_ptr_q;
+        next_block_ptr_d = current_block_ptr_q;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_INSERT_BLOCK;
+        end
+      end
+
+      STATE_FREE_WAIT_INSERT_BLOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_FREE_UPDATE_FREELIST;
+        end
+      end
+
+      STATE_FREE_UPDATE_FREELIST: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        lsu_req_op   = LSU_OP_STORE_WORD;
+        lsu_req_word = free_ptr_q;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_UPDATE;
+        end
+      end
+
+      STATE_FREE_WAIT_UPDATE: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_IDLE;  // TODO: should check possible merging
+        end
+      end
+
+
 
       STATE_SBRK: begin
         // TODO: size
@@ -342,25 +489,23 @@ module falafel_core
       alloc_size_q <= '0;
       alloc_ptr_q <= NULL_PTR;
       freelist_ptr_q <= NULL_PTR;
-      buffered_word_q <= '0;
       buffered_block_q <= '0;
       current_block_ptr_q <= NULL_PTR;
       prev_block_ptr_q <= '0;
       next_block_ptr_q <= '0;
       target_block_ptr_q <= '0;
-      change_block_q <= 1'b0;
+      free_ptr_q <= '0;
     end else begin
       state_q <= state_d;
       alloc_size_q <= alloc_size_d;
       alloc_ptr_q <= alloc_ptr_d;
       freelist_ptr_q <= freelist_ptr_d;
-      buffered_word_q <= buffered_word_d;
       buffered_block_q <= buffered_block_d;
       current_block_ptr_q <= current_block_ptr_d;
       prev_block_ptr_q <= prev_block_ptr_d;
       next_block_ptr_q <= next_block_ptr_d;
       target_block_ptr_q <= target_block_ptr_d;
-      change_block_q <= change_block_d;
+      free_ptr_q <= free_ptr_d;
     end
   end
 

@@ -9,7 +9,7 @@ package falafel_pkg;
 
   localparam word_t NULL_PTR = '0;
   localparam word_t WORD_SIZE = 8;
-  localparam word_t BLOCK_ALIGNMENT = 4;
+  localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
 
   // Configuration registers addresses
   // localparam BASE_ADDR_ADDR = 'h10;
@@ -33,6 +33,7 @@ package falafel_pkg;
   // verilator lint_on WIDTHEXPAND
   localparam word_t MIN_PAYLOAD_SIZE = 32;
   localparam word_t MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
+  localparam word_t BLOCK_NEXT_PTR_OFFSET = 8;
 
   typedef enum {
     LSU_OP_STORE_WORD = 0,

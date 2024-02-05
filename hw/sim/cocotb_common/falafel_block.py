@@ -10,6 +10,16 @@ class Block:
     size: int
 
 
+def print_list(blocks):
+    if len(blocks) == 0:
+        return
+
+    for block in blocks:
+        print((block.base_addr, block.size), '-->', end=' ')
+
+    print('NULL_PTR')
+
+
 def list_to_mem(base_addr: int, blocks: list[Block], mem):
     def store_block(addr, size, next_ptr):
         addr = addr//WORD_SIZE
@@ -17,7 +27,7 @@ def list_to_mem(base_addr: int, blocks: list[Block], mem):
         mem[addr+1] = next_ptr
 
     def store_word(addr, word):
-        addr = addr/WORD_SIZE
+        addr = addr//WORD_SIZE
         mem[addr] = word
 
     NULL_PTR = 0
@@ -39,7 +49,7 @@ def mem_to_list(base_addr: int, mem) -> list[Block]:
     def load_block(addr):
         addr = addr//WORD_SIZE
         assert addr in mem, "addr {} in mem".format(addr)
-        assert addr+1 in mem, "addr {} in mem".format(addr)
+        assert addr+1 in mem, "addr {} in mem".format(addr+1)
 
         size = mem[addr]
         next_ptr = mem[addr+1]

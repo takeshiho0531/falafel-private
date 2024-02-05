@@ -1,9 +1,7 @@
 from cocotb_bus.bus import Bus
 from abc import abstractmethod
 
-from cocotb.triggers import RisingEdge, ReadOnly, NextTimeStep
-
-from queue import Queue
+from cocotb.triggers import RisingEdge, ReadOnly
 
 
 class FalafelLsuRequestBus(Bus):
@@ -139,8 +137,6 @@ class FalafelLsuResponseMonitor:
             await RisingEdge(self.clk)
             await ReadOnly()
 
-        await NextTimeStep()
-
         word = int(self.bus.word)
         block = (int(self.bus.block_size), int(self.bus.block_next_ptr))
 
@@ -165,8 +161,6 @@ class FalafelMemRequestMonitor:
         while not self.bus.val.value:
             await RisingEdge(self.clk)
             await ReadOnly()
-
-        await NextTimeStep()
 
         is_write = int(self.bus.is_write)
         addr = int(self.bus.addr)
@@ -195,8 +189,6 @@ class FalafelMemResponseDriver:
             await RisingEdge(self.clk)
             await ReadOnly()
 
-        await NextTimeStep()
-
         await RisingEdge(self.clk)
         self.bus.val.value = 0
 
@@ -205,13 +197,13 @@ class FalafelFifoReadSlave:
     def __init__(self, bus, clk):
         self.clk = clk
         self.bus = bus
-        self.queue = Queue()
+        self.queue = []
 
         self.bus.empty.value = 1
         self.bus.dout.value = 0
 
     async def push(self, data):
-        self.queue.put(data)
+        self.queue.append(data)
 
     async def monitor(self):
         await RisingEdge(self.clk)
@@ -221,13 +213,14 @@ class FalafelFifoReadSlave:
         await RisingEdge(self.clk)
 
         while True:
-            if self.queue.empty():
+            if len(self.queue) == 0:
                 await RisingEdge(self.clk)
                 continue
 
-            await NextTimeStep()
             self.bus.empty.value = 0
-            self.bus.dout.value = self.queue.get()
+            self.bus.dout.value = self.queue.pop(0)
+
+            await ReadOnly()
 
             while not self.bus.read.value:
                 await RisingEdge(self.clk)
@@ -241,15 +234,15 @@ class FalafelFifoWriteSlave:
     def __init__(self, bus, clk):
         self.clk = clk
         self.bus = bus
-        self.queue = Queue()
+        self.queue = []
 
         self.bus.full.value = 1
 
     async def pop(self):
-        while not self.queue.qsize():
+        while len(self.queue) == 0:
             await RisingEdge(self.clk)
 
-        return self.queue.get()
+        return self.queue.pop(0)
 
     async def monitor(self):
         await RisingEdge(self.clk)
@@ -263,4 +256,4 @@ class FalafelFifoWriteSlave:
                 await RisingEdge(self.clk)
                 await ReadOnly()
 
-            self.queue.put(int(self.bus.din.value))
+            self.queue.append(int(self.bus.din.value))
