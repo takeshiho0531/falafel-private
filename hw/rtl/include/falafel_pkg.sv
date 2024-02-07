@@ -11,9 +11,13 @@ package falafel_pkg;
   localparam word_t WORD_SIZE = 8;
   localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
 
+  // Opcodes
+  localparam word_t REQ_ACCESS_REGISTER = 0;
+  localparam word_t REQ_ALLOC_MEM = 1;
+  localparam word_t REQ_FREE_MEM = 2;
+
   // Configuration registers addresses
-  // localparam BASE_ADDR_ADDR = 'h10;
-  // localparam BUCKET_SIZE_ADDR = 'h20;
+  localparam FREE_LIST_PTR_ADDR = 'h10;
 
   // Internal configuration registers
   typedef struct packed {

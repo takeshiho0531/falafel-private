@@ -3,7 +3,7 @@ module falafel_core
 (
     input logic clk_i,
     input logic rst_ni,
-    input config_regs_t falafel_config,
+    input config_regs_t falafel_config_i,
 
     //----------- fifo interfaces ------------//
     input  logic              alloc_fifo_empty_i,
@@ -180,12 +180,12 @@ module falafel_core
 
       STATE_ALLOC_LOAD_FREE_PTR: begin
         lsu_req_val  = 1'b1;
-        lsu_req_addr = falafel_config.free_list_ptr;
+        lsu_req_addr = falafel_config_i.free_list_ptr;
         lsu_req_op   = LSU_OP_LOAD_WORD;
 
         if (lsu_req_rdy) begin
           state_d = STATE_ALLOC_WAIT_FREE_PTR;
-          current_block_ptr_d = lsu_req_addr;
+          current_block_ptr_d = lsu_req_addr - WORD_SIZE;
         end
       end
 
@@ -223,8 +223,12 @@ module falafel_core
       STATE_ALLOC_PROCESS_BLOCK: begin
         if (bp_is_big_enough) begin
           state_d = STATE_ALLOC_CALC_SPLIT;
+          next_block_ptr_d = bp_next_ptr;
         end else if (bp_is_null) begin
-          state_d = STATE_SBRK;
+          // state_d = STATE_SBRK;
+          // TODO
+          state_d = STATE_WRITE_RESPONSE;
+          alloc_ptr_d = ERR_NOMEM;
         end else begin
           state_d = STATE_ALLOC_LOAD_BLOCK;
           next_block_ptr_d = bp_next_ptr;
@@ -341,7 +345,7 @@ module falafel_core
 
       STATE_FREE_LOAD_FREE_PTR: begin
         lsu_req_val  = 1'b1;
-        lsu_req_addr = falafel_config.free_list_ptr;
+        lsu_req_addr = falafel_config_i.free_list_ptr;
         lsu_req_op   = LSU_OP_LOAD_WORD;
 
         if (lsu_req_rdy) begin

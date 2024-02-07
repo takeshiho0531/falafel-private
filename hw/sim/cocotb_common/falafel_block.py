@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-
-WORD_SIZE = 8
+from falafel_pkg import WORD_SIZE
 
 
 @dataclass

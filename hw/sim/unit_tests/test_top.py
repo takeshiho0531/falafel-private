@@ -12,14 +12,28 @@ WRAPPER_DIR = SIM_DIR + '/unit_tests/sv_wrappers'
 sys.path.insert(0, SIM_DIR + '/cocotb_common')
 
 
-def test_fifo():
+# def test_falafel_fifo():
+#     run(
+#         includes=[INCLUDE_DIR],
+#         verilog_sources=[
+#             INCLUDE_DIR + "/fifos/falafel_fifo_internal.sv",
+#             INCLUDE_DIR + "/fifos/falafel_fifo.sv"],
+#         toplevel="falafel_fifo",
+#         module="cocotb_fifo",
+#         sim_build="sim_build/falafel_fifo",
+#     )
+
+
+def test_falafel_input_parser():
     run(
         includes=[INCLUDE_DIR],
-        verilog_sources=[
-            INCLUDE_DIR + "/fifos/fifo_internal.sv", INCLUDE_DIR + "/fifos/fifo.sv"],
-        toplevel="fifo",
-        module="cocotb_fifo",
-        sim_build="sim_build/fifo",
+        verilog_sources=[INCLUDE_DIR + "/falafel_pkg.sv",
+                         RTL_DIR + "/falafel_config_regs.sv",
+                         RTL_DIR + "/falafel_input_parser.sv",
+                         WRAPPER_DIR + "/falafel_input_parser_wrapper.sv"],
+        toplevel="falafel_input_parser_wrapper",
+        module="cocotb_input_parser",
+        sim_build="sim_build/falafel_input_parser",
     )
 
 

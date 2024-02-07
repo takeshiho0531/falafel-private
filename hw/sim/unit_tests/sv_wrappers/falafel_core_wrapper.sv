@@ -45,7 +45,7 @@ module falafel_core_wrapper
   falafel_core i_falafel_core (
       .clk_i,
       .rst_ni,
-      .falafel_config(falafel_config),
+      .falafel_config_i(falafel_config),
       .alloc_fifo_empty_i,
       .alloc_fifo_read_o,
       .alloc_fifo_dout_i,

@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module fifo #(
+module falafel_fifo #(
     parameter NUM_ENTRIES = 64,  // number of entries
     parameter DATA_W      = 16   // entry data width
 ) (
@@ -34,10 +34,10 @@ module fifo #(
   assign internal_din   = din_i;
   assign internal_write = bypass ? 1'b0 : write_i;
 
-  fifo_internal #(
+  falafel_fifo_internal #(
       .NUM_ENTRIES(NUM_ENTRIES),
       .DATA_W(DATA_W)
-  ) i_fifo_internal (
+  ) i_falafel_fifo_internal (
       .clk_i,
       .rst_ni,
       .read_i (internal_read),

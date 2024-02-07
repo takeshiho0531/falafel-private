@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module fifo_internal #(
+module falafel_fifo_internal #(
     parameter NUM_ENTRIES = 64,  // number of entries
     parameter DATA_W      = 16   // entry data width
 ) (

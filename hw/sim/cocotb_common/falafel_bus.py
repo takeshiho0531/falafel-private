@@ -4,6 +4,18 @@ from abc import abstractmethod
 from cocotb.triggers import RisingEdge, ReadOnly
 
 
+class FalafelValRdyBus(Bus):
+    _signalNames = ["val", "rdy", "data"]
+
+    def __init__(self, entity, name, signals):
+        for signal in self._signalNames:
+            if not signal in signals:
+                raise AttributeError(
+                    f"signals doesn't contain a value for key" f"{name}")
+
+        super().__init__(entity, name, signals)
+
+
 class FalafelLsuRequestBus(Bus):
     _signalNames = ["val", "rdy", "op", "addr",
                     "word",  "block_size", "block_next_ptr"]
@@ -75,6 +87,49 @@ class FalafelFifoReadBus(Bus):
                     f"signals doesn't contain a value for key" f"{name}")
 
         super().__init__(entity, name, signals)
+
+
+class FalafelValRdyMonitor:
+    def __init__(self, bus, clk):
+        self.clk = clk
+        self.bus = bus
+
+    async def recv(self):
+        await RisingEdge(self.clk)
+        self.bus.rdy.value = 1
+
+        await ReadOnly()
+
+        while not self.bus.val.value:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        data = int(self.bus.data)
+
+        await RisingEdge(self.clk)
+        self.bus.rdy.value = 0
+
+        return data
+
+
+class FalafelValRdyDriver:
+    def __init__(self, bus, clk):
+        self.clk = clk
+        self.bus = bus
+
+    async def send(self, data):
+        await RisingEdge(self.clk)
+        self.bus.val.value = 1
+        self.bus.data.value = data
+
+        await ReadOnly()
+
+        while not self.bus.rdy.value:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        await RisingEdge(self.clk)
+        self.bus.val.value = 0
 
 
 class FalafelLsuRequestDriver:

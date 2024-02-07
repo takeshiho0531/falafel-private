@@ -5,3 +5,4 @@ env
 *.vcd
 __pycache__
 sim_build
+*.gtkw

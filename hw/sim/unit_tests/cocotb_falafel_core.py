@@ -7,35 +7,12 @@ from falafel_bus import FalafelFifoReadBus, FalafelFifoWriteBus, FalafelFifoRead
 
 import falafel_block
 from falafel_block import Block
+from falafel_pkg import *
 
 
 CLK_PERIOD = 10
 MAX_SIM_TIME = 10000
 UNITS = 'ns'
-WORD_SIZE = 8
-
-
-def init_mem():
-    mem = {}
-
-    def store_block(addr, block):
-        addr = addr//WORD_SIZE
-        (size, next_ptr) = block
-        mem[addr] = size
-        mem[addr+1] = next_ptr
-
-    def store_word(addr, word):
-        addr = addr//WORD_SIZE
-        mem[addr] = word
-
-    NULL_PTR = 0
-
-    store_word(0x20, 160)
-    store_block(160, (10, 320))
-    store_block(320, (48, 1000))
-    store_block(1000, (32, NULL_PTR))
-
-    return mem
 
 
 async def reset_dut(dut, clk):
@@ -73,8 +50,6 @@ async def mem_monitor(dut, clk, mem):
 
     await RisingEdge(clk)
 
-    # mem = init_mem()
-
     while True:
         (is_write, addr, data) = await mem_req_monitor.recv()
 
@@ -94,7 +69,7 @@ async def mem_monitor(dut, clk, mem):
 
 @cocotb.test()
 async def test_simple_alloc(dut):
-    """Test simple allocation"""
+    """Test simple allocations"""
 
     clk = dut.clk_i
 
@@ -119,24 +94,11 @@ async def test_simple_alloc(dut):
     mem = {}
 
     blocks = [
-        Block(160, 10),
+        Block(160, 32),
         Block(320, 128),
-        # Block(320, 32),
-        # Block(320, 72),
         Block(1000, 32),
-        Block(2000, 50)
+        Block(2000, 56)
     ]
-
-    # expected_blocks = [
-    #     Block(160, 10),
-    #     Block(320, 128),
-    #     Block(1000, 32),
-    #     Block(2000, 50)
-    # ]
-
-    # print('initial list', blocks)
-    print('initial list', end=' ')
-    falafel_block.print_list(blocks)
 
     falafel_block.list_to_mem(free_list_ptr, blocks, mem)
 
@@ -149,20 +111,89 @@ async def test_simple_alloc(dut):
 
     await Timer(20, units=UNITS)
 
-    await alloc_fifo_driver.push(35)
-    ptr = await resp_fifo_driver.pop()
-    print('ptr:', ptr)
-    await Timer(1000, units=UNITS)
-    print('middle list', end=' ')
-    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
-    print('mem[368] =', mem[368//WORD_SIZE])
-    print('mem[320] =', mem[320//WORD_SIZE])
+    # print('initial list', end=' ')
+    # falafel_block.print_list(blocks)
 
-    await free_fifo_driver.push(ptr)
-    await Timer(1000, units=UNITS)
-    print('final list', end=' ')
-    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
-    print('mem[368] =', mem[368//WORD_SIZE])
-    print('mem[320] =', mem[320//WORD_SIZE])
+    await alloc_fifo_driver.push(35)
+    await alloc_fifo_driver.push(32)
+    await alloc_fifo_driver.push(100)
+    await alloc_fifo_driver.push(80)
+    await alloc_fifo_driver.push(32)
+    await alloc_fifo_driver.push(50)
+    await alloc_fifo_driver.push(32)
+
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == 328, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == 168, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == ERR_NOMEM, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == 376, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == 1008, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == 2008, 'ptrs dont match'
+    ptr = await resp_fifo_driver.pop()
+    assert ptr == ERR_NOMEM, 'ptrs dont match'
+
+    await Timer(100, units=UNITS)
+    # print('final list', end=' ')
+    # falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await Timer(100, units=UNITS)
+
+
+@cocotb.test()
+async def test_simple_frees(dut):
+    """Test simple frees"""
+
+    clk = dut.clk_i
+
+    cocotb.start_soon(Clock(clk, CLK_PERIOD, units=UNITS).start())
+
+    request_bus = FalafelValRdyBus(
+        dut, "req", {'val': 'val_i', 'rdy': 'rdy_o', 'data': 'data_i'})
+
+    response_bus = FalafelValRdyBus(
+        dut, "resp", {'val': 'val_o', 'rdy': 'rdy_i', 'data': 'data_o'})
+
+    req_driver = FalafelValRdyDriver(request_bus, clk)
+    resp_monitor = FalafelValRdyMonitor(response_bus, clk)
+
+    free_list_ptr = 0x20
+
+    mem = {}
+
+    blocks = [
+        Block(160, 32),
+        Block(320, 128),
+        Block(1000, 32),
+        Block(2000, 56)
+    ]
+
+    falafel_block.list_to_mem(free_list_ptr, blocks, mem)
+
+    await reset_dut(dut, clk)
+    await cocotb.start(sim_time_counter(dut, clk))
+    await cocotb.start(mem_monitor(dut, clk, mem))
+    await Timer(20, units=UNITS)
+
+    # print('initial list', end=' ')
+    # falafel_block.print_list(blocks)
+
+    # configure free ptr
+    await req_driver.send(REQ_ACCESS_REGISTER)
+    await req_driver.send(FREE_LIST_PTR_ADDR)
+    await req_driver.send(free_list_ptr)
+
+    await req_driver.send(REQ_ALLOC_MEM)
+    await req_driver.send(5)
+
+    ptr = await resp_monitor.recv()
+    print('ptr', ptr)
+
+    # print('final list', end=' ')
+    # falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
     await Timer(100, units=UNITS)

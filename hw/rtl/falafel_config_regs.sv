@@ -1,4 +1,6 @@
-module config_regs
+`timescale 1ns / 1ps
+
+module falafel_config_regs
   import falafel_pkg::*;
 (
     input logic clk_i,
@@ -18,6 +20,7 @@ module config_regs
 
     if (write_i) begin
       unique case (addr_i)
+        FREE_LIST_PTR_ADDR: config_d.free_list_ptr = word_t'(data_i);
         default: ;
       endcase
     end
