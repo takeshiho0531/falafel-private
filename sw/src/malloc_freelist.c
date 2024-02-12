@@ -85,6 +85,8 @@ void *fl_malloc(size_t size) {
   if (size > 0) {
     // Align the pointer
     size = align_up(size, sizeof(void *));
+    if (size < MIN_ALLOC_SZ)
+      size = MIN_ALLOC_SZ;
 
     // try to find a big enough block to alloc
     list_for_each_entry(blk, &free_list, node) {
