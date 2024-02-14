@@ -43,7 +43,8 @@ typedef struct {
 #define ALLOC_HEADER_SZ offsetof(alloc_node_t, block)
 
 // We are enforcing a minimum allocation size of 32B.
-#define MIN_ALLOC_SZ ALLOC_HEADER_SZ + 32
+#define MIN_REQ_SZ 32
+#define MIN_ALLOC_SZ ALLOC_HEADER_SZ + MIN_REQ_SZ
 
 #pragma mark - Prototypes -
 
@@ -85,8 +86,8 @@ void *fl_malloc(size_t size) {
   if (size > 0) {
     // Align the pointer
     size = align_up(size, sizeof(void *));
-    if (size < MIN_ALLOC_SZ)
-      size = MIN_ALLOC_SZ;
+    if (size < MIN_REQ_SZ)
+      size = MIN_REQ_SZ;
 
     // try to find a big enough block to alloc
     list_for_each_entry(blk, &free_list, node) {
