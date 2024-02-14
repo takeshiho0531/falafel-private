@@ -329,8 +329,8 @@ module falafel_core
           state_d = STATE_FREE_WAIT_LOAD_SIZE;
 
           free_ptr_d = free_ptr_q - WORD_SIZE;
-          prev_block_ptr_d = lsu_req_addr;
           current_block_ptr_d = lsu_req_addr;
+          // prev_block_ptr_d = lsu_req_addr;
           // prev_block_ptr_d = current_block_ptr_q;
         end
       end
@@ -351,6 +351,7 @@ module falafel_core
         if (lsu_req_rdy) begin
           state_d = STATE_FREE_WAIT_FREE_PTR;
           current_block_ptr_d = lsu_req_addr;
+          prev_block_ptr_d = lsu_req_addr;
         end
       end
 
@@ -418,7 +419,8 @@ module falafel_core
 
       STATE_FREE_UPDATE_FREELIST: begin
         lsu_req_val  = 1'b1;
-        lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        // lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        lsu_req_addr = prev_block_ptr_q;
         lsu_req_op   = LSU_OP_STORE_WORD;
         lsu_req_word = free_ptr_q;
 

@@ -66,12 +66,12 @@ async def mem_monitor(dut, clk, mem):
         norm_addr = addr//WORD_SIZE
 
         if is_write:
-            print('mem[norm_addr] =', data)
+            # print('mem[norm_addr] =', data)
             mem[norm_addr] = data
         else:
             assert norm_addr in mem, "Accessed uninitialized mem[{}]".format(
                 norm_addr)
-            print('mem[' + str(norm_addr) + '] =', mem[norm_addr])
+            # print('mem[' + str(norm_addr) + '] =', mem[norm_addr])
             data = mem[norm_addr]
 
         await mem_rsp_driver.send(data)
@@ -113,8 +113,8 @@ async def test_simple_alloc(dut):
 
     await Timer(20, units=UNITS)
 
-    # print('initial list', end=' ')
-    # falafel_block.print_list(blocks)
+    print('initial list', end=' ')
+    falafel_block.print_list(blocks)
 
     await req_driver.send(REQ_ACCESS_REGISTER)
     await req_driver.send(FREE_LIST_PTR_ADDR)
@@ -122,12 +122,56 @@ async def test_simple_alloc(dut):
 
     await req_driver.send(REQ_ALLOC_MEM)
     await req_driver.send(35)
-
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
+    assert ptr == 328
 
-    # await Timer(100, units=UNITS)
-    # print('final list', end=' ')
-    # falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+    await Timer(100, units=UNITS)
+    print('after first alloc', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await req_driver.send(REQ_ALLOC_MEM)
+    await req_driver.send(35)
+    ptr = await resp_monitor.recv()
+    print('ptr', ptr)
+    assert ptr == 376
+
+    await Timer(100, units=UNITS)
+    print('after second alloc', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await req_driver.send(REQ_FREE_MEM)
+    await req_driver.send(328)
+
+    await Timer(100, units=UNITS)
+    print('after first free', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await req_driver.send(REQ_FREE_MEM)
+    await req_driver.send(376)
+
+    await Timer(100, units=UNITS)
+    print('after second free', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await req_driver.send(REQ_ALLOC_MEM)
+    await req_driver.send(35)
+    ptr = await resp_monitor.recv()
+    print('ptr', ptr)
+    assert ptr == 328
+
+    await Timer(100, units=UNITS)
+    print('first alloc', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await req_driver.send(REQ_ALLOC_MEM)
+    await req_driver.send(35)
+    ptr = await resp_monitor.recv()
+    print('ptr', ptr)
+    assert ptr == 376
+
+    await Timer(100, units=UNITS)
+    print('second alloc', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
     await Timer(100, units=UNITS)

@@ -11,7 +11,7 @@ from falafel_pkg import *
 
 
 CLK_PERIOD = 10
-MAX_SIM_TIME = 10000
+MAX_SIM_TIME = 15000
 UNITS = 'ns'
 
 
@@ -152,16 +152,21 @@ async def test_simple_frees(dut):
 
     cocotb.start_soon(Clock(clk, CLK_PERIOD, units=UNITS).start())
 
-    request_bus = FalafelValRdyBus(
-        dut, "req", {'val': 'val_i', 'rdy': 'rdy_o', 'data': 'data_i'})
+    alloc_fifo_bus = FalafelFifoReadBus(
+        dut, "alloc_fifo", {'empty': 'empty_i', 'read': 'read_o', 'dout': 'dout_i'})
 
-    response_bus = FalafelValRdyBus(
-        dut, "resp", {'val': 'val_o', 'rdy': 'rdy_i', 'data': 'data_o'})
+    free_fifo_bus = FalafelFifoReadBus(
+        dut, "free_fifo", {'empty': 'empty_i', 'read': 'read_o', 'dout': 'dout_i'})
 
-    req_driver = FalafelValRdyDriver(request_bus, clk)
-    resp_monitor = FalafelValRdyMonitor(response_bus, clk)
+    resp_fifo_bus = FalafelFifoWriteBus(
+        dut, "resp_fifo", {'full': 'full_i', 'write': 'write_o', 'din': 'din_o'})
+
+    alloc_fifo_driver = FalafelFifoReadSlave(alloc_fifo_bus, clk)
+    free_fifo_driver = FalafelFifoReadSlave(free_fifo_bus, clk)
+    resp_fifo_driver = FalafelFifoWriteSlave(resp_fifo_bus, clk)
 
     free_list_ptr = 0x20
+    dut.falafel_config_free_list_ptr.value = free_list_ptr
 
     mem = {}
 
@@ -177,23 +182,50 @@ async def test_simple_frees(dut):
     await reset_dut(dut, clk)
     await cocotb.start(sim_time_counter(dut, clk))
     await cocotb.start(mem_monitor(dut, clk, mem))
+    await cocotb.start(alloc_fifo_driver.monitor())
+    await cocotb.start(free_fifo_driver.monitor())
+    await cocotb.start(resp_fifo_driver.monitor())
+
     await Timer(20, units=UNITS)
 
-    # print('initial list', end=' ')
-    # falafel_block.print_list(blocks)
+    print('initial list', end=' ')
+    falafel_block.print_list(blocks)
 
-    # configure free ptr
-    await req_driver.send(REQ_ACCESS_REGISTER)
-    await req_driver.send(FREE_LIST_PTR_ADDR)
-    await req_driver.send(free_list_ptr)
 
-    await req_driver.send(REQ_ALLOC_MEM)
-    await req_driver.send(5)
+    await alloc_fifo_driver.push(35)
+    await alloc_fifo_driver.push(32)
 
-    ptr = await resp_monitor.recv()
-    print('ptr', ptr)
+    ptr0 = await resp_fifo_driver.pop()
+    assert ptr0 == 328, 'ptrs dont match'
+    ptr1 = await resp_fifo_driver.pop()
+    assert ptr1 == 168, 'ptrs dont match'
 
-    # print('final list', end=' ')
-    # falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+    await Timer(100, units=UNITS)
+
+    print('after allocations list', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await free_fifo_driver.push(ptr0)
+    print('after first free', end=' ')
+    await Timer(3000, units=UNITS)
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await free_fifo_driver.push(ptr1)
+    print('after second free', end=' ')
+    await Timer(3000, units=UNITS)
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+
+    await Timer(800, units=UNITS)
+
+    await alloc_fifo_driver.push(35)
+    await alloc_fifo_driver.push(32)
+
+    ptr0 = await resp_fifo_driver.pop()
+    assert ptr0 == 328, 'ptrs dont match'
+    ptr1 = await resp_fifo_driver.pop()
+    assert ptr1 == 168, 'ptrs dont match'
+
+    print('final list', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
     await Timer(100, units=UNITS)
