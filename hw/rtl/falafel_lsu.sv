@@ -79,6 +79,8 @@ module falafel_lsu
     mem_req_val_o = 1'b0;
     mem_req_is_write_i = 1'b0;
     mem_req_data_o = '0;
+    mem_rsp_rdy_o = 1'b0;
+
 
     addr_buffer_d = addr_buffer_q;
     read_block_d = read_block_q;
