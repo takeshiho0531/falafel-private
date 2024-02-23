@@ -3,17 +3,10 @@ from cocotb.triggers import Timer, FallingEdge
 from cocotb.clock import Clock
 
 from collections import deque
+from falafel_pkg import *
 
 CLK_PERIOD = 10
 MAX_SIM_TIME = 1000
-
-# input request opcodes
-REQ_ACCESS_REGISTER = 0
-REQ_ALLOC_MEM = 1
-REQ_FREE_MEM = 2
-
-# config register addresses
-FREE_LIST_PTR_ADDR = 0x10
 
 
 async def reset_dut(dut):
@@ -52,8 +45,7 @@ async def write_flit(dut, data):
 
 
 async def write_config(dut, addr, val):
-    await write_flit(dut, REQ_ACCESS_REGISTER)
-    await write_flit(dut, addr)
+    await write_flit(dut, write_config_req(0, addr))
     await write_flit(dut, val)
 
 

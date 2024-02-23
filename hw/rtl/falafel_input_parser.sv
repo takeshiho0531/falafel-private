@@ -26,7 +26,6 @@ module falafel_input_parser
   typedef enum logic [2:0] {
     STATE_IDLE,
     STATE_PARSE_INPUT,
-    STATE_WRITE_CONFIG_REG_ADDR,
     STATE_WRITE_CONFIG_REG_DATA,
     STATE_WRITE_ALLOC_FIFO,
     STATE_WRITE_FREE_FIFO
@@ -42,12 +41,19 @@ module falafel_input_parser
   logic [DATA_W-1:0] config_reg_data;
   logic [DATA_W-1:0] config_reg_addr;
 
-  assign req_data_buffer_d = (req_val_i && req_rdy_o) ? req_data_i : req_data_buffer_q;
-  assign config_reg_addr   = req_data_buffer_q;
-  assign config_reg_data   = req_data_i;
+  input_req_t input_req;
+  config_req_t config_req;
 
-  assign alloc_fifo_din_o  = req_data_i;
-  assign free_fifo_din_o   = req_data_i;
+  assign input_req = input_req_t'(req_data_buffer_q);
+  assign config_req = config_req_t'(req_data_buffer_q);
+
+  assign req_data_buffer_d = (req_val_i && req_rdy_o) ? req_data_i : req_data_buffer_q;
+
+  assign config_reg_addr = 64'(config_req.addr);
+  assign config_reg_data = req_data_i;
+
+  assign alloc_fifo_din_o = req_data_i;
+  assign free_fifo_din_o = req_data_i;
 
   always_comb begin
     input_state_d = input_state_q;
@@ -68,19 +74,12 @@ module falafel_input_parser
       end
 
       STATE_PARSE_INPUT: begin
-        unique case (req_data_buffer_q)
-          REQ_ACCESS_REGISTER: input_state_d = STATE_WRITE_CONFIG_REG_ADDR;
+        unique case (input_req.opcode)
+          REQ_ACCESS_REGISTER: input_state_d = STATE_WRITE_CONFIG_REG_DATA;
           REQ_ALLOC_MEM: input_state_d = STATE_WRITE_ALLOC_FIFO;
           REQ_FREE_MEM: input_state_d = STATE_WRITE_FREE_FIFO;
+          default: assert (0);
         endcase
-      end
-
-      STATE_WRITE_CONFIG_REG_ADDR: begin
-        req_rdy_o = 1'b1;
-
-        if (req_val_i && req_rdy_o) begin
-          input_state_d = STATE_WRITE_CONFIG_REG_DATA;
-        end
       end
 
       STATE_WRITE_CONFIG_REG_DATA: begin

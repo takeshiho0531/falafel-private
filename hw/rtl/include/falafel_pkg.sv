@@ -11,10 +11,29 @@ package falafel_pkg;
   localparam word_t WORD_SIZE = 8;
   localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
 
+
+  ////////////////////////
+  // Input parser types //
+  ////////////////////////
+
+  localparam word_t OPCODE_SIZE = 4;
+  localparam word_t MSG_ID_SIZE = 8;
+  localparam word_t REG_ADDR_SIZE = 16;
+
+  typedef struct packed {
+    logic [MSG_ID_SIZE-1:0] id;
+    logic [OPCODE_SIZE-1:0] opcode;
+  } input_req_t;
+
+  typedef struct packed {
+    logic [REG_ADDR_SIZE-1:0] addr;
+    input_req_t header;
+  } config_req_t;
+
   // Opcodes
-  localparam word_t REQ_ACCESS_REGISTER = 0;
-  localparam word_t REQ_ALLOC_MEM = 1;
-  localparam word_t REQ_FREE_MEM = 2;
+  localparam REQ_ACCESS_REGISTER = OPCODE_SIZE'(0);
+  localparam REQ_ALLOC_MEM = OPCODE_SIZE'(1);
+  localparam REQ_FREE_MEM = OPCODE_SIZE'(2);
 
   // Configuration registers addresses
   localparam FREE_LIST_PTR_ADDR = 'h10;
@@ -25,6 +44,10 @@ package falafel_pkg;
     logic [DATA_W-1:0] free_list_ptr;
   } config_regs_t;
 
+
+  ////////////////
+  // Core types //
+  ////////////////
 
   // Internal types
   typedef struct packed {
