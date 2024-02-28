@@ -50,6 +50,8 @@ module falafel_lsu
 
     STATE_STORE_BLOCK_SIZE,
     STATE_STORE_BLOCK_PTR,
+    STATE_WAIT_STORE_BLOCK_SIZE,
+    STATE_WAIT_STORE_BLOCK_PTR,
 
     STATE_RESPOND
   } lsu_state_e;
@@ -182,8 +184,16 @@ module falafel_lsu
         mem_req_data_o = block_buffer_q.size;
 
         if (mem_req_rdy_i) begin
-          state_d = STATE_STORE_BLOCK_PTR;
+          state_d = STATE_WAIT_STORE_BLOCK_SIZE;
           addr_buffer_d = addr_buffer_q + WORD_SIZE;
+        end
+      end
+
+      STATE_WAIT_STORE_BLOCK_SIZE: begin
+        mem_rsp_rdy_o = 1'b1;
+
+        if (mem_rsp_val_i) begin
+          state_d = STATE_STORE_BLOCK_PTR;
         end
       end
 
@@ -193,6 +203,14 @@ module falafel_lsu
         mem_req_data_o = block_buffer_q.next_ptr;
 
         if (mem_req_rdy_i) begin
+          state_d = STATE_WAIT_STORE_BLOCK_PTR;
+        end
+      end
+
+      STATE_WAIT_STORE_BLOCK_PTR: begin
+        mem_rsp_rdy_o = 1'b1;
+
+        if (mem_rsp_val_i) begin
           state_d = STATE_RESPOND;
         end
       end

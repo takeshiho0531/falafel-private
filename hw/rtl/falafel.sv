@@ -1,13 +1,19 @@
 module falafel
   import falafel_pkg::*;
-(
+#(
+    parameter unsigned NUM_HEADER_QUEUES = 1,
+    parameter unsigned NUM_ALLOC_QUEUES  = 1,
+    parameter unsigned NUM_FREE_QUEUES   = 1,
+
+    localparam unsigned NUM_QUEUES = NUM_HEADER_QUEUES + NUM_ALLOC_QUEUES + NUM_FREE_QUEUES
+) (
     input logic clk_i,
     input logic rst_ni,
 
     //--------------- request ---------------//
-    input  logic              req_val_i,
-    output logic              req_rdy_o,
-    input  logic [DATA_W-1:0] req_data_i,
+    input  logic              req_val_i [NUM_QUEUES],
+    output logic              req_rdy_o [NUM_QUEUES],
+    input  logic [DATA_W-1:0] req_data_i[NUM_QUEUES],
 
     //-------------- response ---------------//
     input  logic              resp_rdy_i,
@@ -28,19 +34,25 @@ module falafel
 );
 
   localparam NUM_OP_FIFO_ENTRIES = 4;
+  localparam ALLOC_ENTRY_WIDTH = MSG_ID_SIZE + DATA_W;
 
   // Alloc and Free fifos
   logic alloc_fifo_write_en;
   logic alloc_fifo_read_en;
   logic alloc_fifo_full;
   logic alloc_fifo_empty;
-  logic [DATA_W-1:0] alloc_fifo_din;
-  logic [DATA_W-1:0] alloc_fifo_dout;
+  logic [DATA_W-1:0] alloc_fifo_din_id;
+  logic [MSG_ID_SIZE-1:0] alloc_fifo_din_size;
+  logic [ALLOC_ENTRY_WIDTH-1:0] alloc_fifo_din;
+  logic [ALLOC_ENTRY_WIDTH-1:0] alloc_fifo_dout;
+  logic [DATA_W-1:0] alloc_fifo_dout_size;
+  logic [MSG_ID_SIZE-1:0] alloc_fifo_dout_id;
   logic free_fifo_write_en;
   logic free_fifo_read_en;
   logic free_fifo_full;
   logic free_fifo_empty;
   logic [DATA_W-1:0] free_fifo_din;
+
   logic [DATA_W-1:0] free_fifo_dout;
   logic resp_fifo_write_en;
   logic resp_fifo_read_en;
@@ -56,10 +68,26 @@ module falafel
   assign sbrk_rsp_val = 1'b0;
   assign sbrk_rsp_ptr = NULL_PTR;
 
+  assign alloc_fifo_din = {alloc_fifo_din_id, alloc_fifo_din_size};
+  assign alloc_fifo_dout_size = alloc_fifo_dout[DATA_W-1:0];
+  assign alloc_fifo_dout_id = alloc_fifo_dout[DATA_W+:MSG_ID_SIZE];
+
   // Config registers
   config_regs_t config_regs;
 
-  falafel_input_parser i_falafel_input_parser (
+
+  logic [MSG_ID_SIZE-1:0] id_buffer_d, id_buffer_q;
+  assign id_buffer_d = alloc_fifo_read_en ? alloc_fifo_dout_id : id_buffer_q;
+
+  always_ff @(posedge clk_i) begin
+    id_buffer_q <= id_buffer_d;
+  end
+
+  falafel_input_arbiter #(
+      .NUM_HEADER_QUEUES(NUM_HEADER_QUEUES),
+      .NUM_ALLOC_QUEUES (NUM_ALLOC_QUEUES),
+      .NUM_FREE_QUEUES  (NUM_FREE_QUEUES)
+  ) i_falafel_input_arbiter (
       .clk_i,
       .rst_ni,
 
@@ -67,12 +95,13 @@ module falafel
       .req_rdy_o (req_rdy_o),
       .req_data_i(req_data_i),
 
-      .alloc_fifo_full_i (alloc_fifo_full),
-      .alloc_fifo_write_o(alloc_fifo_write_en),
-      .alloc_fifo_din_o  (alloc_fifo_din),
-      .free_fifo_full_i  (free_fifo_full),
-      .free_fifo_write_o (free_fifo_write_en),
-      .free_fifo_din_o   (free_fifo_din),
+      .alloc_fifo_full_i    (alloc_fifo_full),
+      .alloc_fifo_write_o   (alloc_fifo_write_en),
+      .alloc_fifo_din_size_o(alloc_fifo_din_size),
+      .alloc_fifo_din_id_o  (alloc_fifo_din_id),
+      .free_fifo_full_i     (free_fifo_full),
+      .free_fifo_write_o    (free_fifo_write_en),
+      .free_fifo_din_o      (free_fifo_din),
 
       .config_o(config_regs)
   );
@@ -83,7 +112,7 @@ module falafel
       .falafel_config_i  (config_regs),
       .alloc_fifo_empty_i(alloc_fifo_empty),
       .alloc_fifo_read_o (alloc_fifo_read_en),
-      .alloc_fifo_dout_i (alloc_fifo_dout),
+      .alloc_fifo_dout_i (alloc_fifo_dout_size),
       .free_fifo_empty_i (free_fifo_empty),
       .free_fifo_read_o  (free_fifo_read_en),
       .free_fifo_dout_i  (free_fifo_dout),
@@ -104,7 +133,7 @@ module falafel
   );
 
   falafel_fifo #(
-      .DATA_W(DATA_W),
+      .DATA_W(ALLOC_ENTRY_WIDTH),
       .NUM_ENTRIES(NUM_OP_FIFO_ENTRIES)
   ) i_alloc_fifo (
       .clk_i,

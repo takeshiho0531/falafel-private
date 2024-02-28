@@ -20,3 +20,9 @@ FREE_LIST_PTR_ADDR = 0x10
 def write_config_req(req_id, addr):
     return REQ_ACCESS_REGISTER | (req_id << OPCODE_SIZE) | (addr << (OPCODE_SIZE
                                                                      + MSG_ID_SIZE))
+
+def write_alloc_req(req_id):
+    return REQ_ALLOC_MEM | (req_id << OPCODE_SIZE)
+
+def write_free_req(req_id):
+    return REQ_FREE_MEM | (req_id << OPCODE_SIZE)

@@ -22,6 +22,10 @@ CLK_PERIOD = 10
 MAX_SIM_TIME = 1000
 UNITS = 'ns'
 
+NUM_HEADER_QUEUES = 2
+NUM_ALLOC_QUEUES  = 2
+NUM_FREE_QUEUES   = 2
+
 
 async def reset_dut(dut, clk):
     await FallingEdge(clk)
@@ -116,12 +120,11 @@ async def test_simple_alloc(dut):
     print('initial list', end=' ')
     falafel_block.print_list(blocks)
 
-    await req_driver.send(REQ_ACCESS_REGISTER)
-    await req_driver.send(FREE_LIST_PTR_ADDR)
-    await req_driver.send(free_list_ptr)
+    await req_driver.sendi(0, write_config_req(0, FREE_LIST_PTR_ADDR))
+    await req_driver.sendi(0, free_list_ptr)
 
-    await req_driver.send(REQ_ALLOC_MEM)
-    await req_driver.send(35)
+    await req_driver.sendi(0, write_alloc_req(0))
+    await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
     assert ptr == 328
@@ -130,8 +133,8 @@ async def test_simple_alloc(dut):
     print('after first alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    await req_driver.send(REQ_ALLOC_MEM)
-    await req_driver.send(35)
+    # await req_driver.sendi(0, write_alloc_req(0))
+    await req_driver.sendi(2, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
     assert ptr == 376
@@ -140,22 +143,23 @@ async def test_simple_alloc(dut):
     print('after second alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    await req_driver.send(REQ_FREE_MEM)
-    await req_driver.send(328)
+    # await req_driver.sendi(0, write_free_req(0))
+    # await req_driver.sendi(0, 328)
+    await req_driver.sendi(4, 328)
 
     await Timer(100, units=UNITS)
     print('after first free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    await req_driver.send(REQ_FREE_MEM)
-    await req_driver.send(376)
+    await req_driver.sendi(0, write_free_req(0))
+    await req_driver.sendi(0, 376)
 
     await Timer(100, units=UNITS)
     print('after second free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    await req_driver.send(REQ_ALLOC_MEM)
-    await req_driver.send(35)
+    await req_driver.sendi(0, write_alloc_req(0))
+    await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
     assert ptr == 328
@@ -164,8 +168,8 @@ async def test_simple_alloc(dut):
     print('first alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    await req_driver.send(REQ_ALLOC_MEM)
-    await req_driver.send(35)
+    await req_driver.sendi(0, write_alloc_req(0))
+    await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
     assert ptr == 376

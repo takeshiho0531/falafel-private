@@ -1,16 +1,20 @@
 `timescale 1ns / 1ps
 
 package falafel_pkg;
-  // Falafel static configuration parameters
-  localparam unsigned DATA_W = 64;
+  //////////////////////////////
+  // Configuration parameters //
+  //////////////////////////////
 
-  // Constants
+  localparam unsigned DATA_W = 64;
   typedef logic [DATA_W-1:0] word_t;
+
+  ///////////////
+  // Constants //
+  ///////////////
 
   localparam word_t NULL_PTR = '0;
   localparam word_t WORD_SIZE = 8;
   localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
-
 
   ////////////////////////
   // Input parser types //
@@ -23,12 +27,17 @@ package falafel_pkg;
   typedef struct packed {
     logic [MSG_ID_SIZE-1:0] id;
     logic [OPCODE_SIZE-1:0] opcode;
-  } input_req_t;
+  } base_header_t;
 
   typedef struct packed {
     logic [REG_ADDR_SIZE-1:0] addr;
-    input_req_t header;
-  } config_req_t;
+    base_header_t base_header;
+  } config_reg_header_t;
+
+  typedef struct packed {
+    logic [MSG_ID_SIZE-1:0] id;
+    word_t size;
+  } alloc_entry_t;
 
   // Opcodes
   localparam REQ_ACCESS_REGISTER = OPCODE_SIZE'(0);

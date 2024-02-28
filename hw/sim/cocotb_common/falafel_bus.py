@@ -111,6 +111,23 @@ class FalafelValRdyMonitor:
 
         return data
 
+    async def recvi(self, index):
+        await RisingEdge(self.clk)
+        self.bus.rdy[index].value = 1
+
+        await ReadOnly()
+
+        while not self.bus.val.value:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        data = int(self.bus.data[index].value)
+
+        await RisingEdge(self.clk)
+        self.bus.rdy[index].value = 0
+
+        return data
+
 
 class FalafelValRdyDriver:
     def __init__(self, bus, clk):
@@ -130,6 +147,21 @@ class FalafelValRdyDriver:
 
         await RisingEdge(self.clk)
         self.bus.val.value = 0
+
+
+    async def sendi(self, index, data):
+        await RisingEdge(self.clk)
+        self.bus.val[index].value = 1
+        self.bus.data[index].value = data
+
+        await ReadOnly()
+
+        while not self.bus.rdy[index].value:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        await RisingEdge(self.clk)
+        self.bus.val[index].value = 0
 
 
 class FalafelLsuRequestDriver:
