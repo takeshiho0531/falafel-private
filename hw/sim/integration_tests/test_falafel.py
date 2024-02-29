@@ -147,14 +147,17 @@ async def test_simple_alloc(dut):
     # await req_driver.sendi(0, 328)
     await req_driver.sendi(4, 328)
 
-    await Timer(100, units=UNITS)
+    # await Timer(100, units=UNITS)
+    # await Timer(500, units=UNITS)
     print('after first free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
     await req_driver.sendi(0, write_free_req(0))
     await req_driver.sendi(0, 376)
 
-    await Timer(100, units=UNITS)
+    # await Timer(100, units=UNITS)
+    # await Timer(500, units=UNITS)
+    # await Timer(500, units=UNITS)
     print('after second free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 

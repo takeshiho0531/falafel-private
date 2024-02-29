@@ -89,7 +89,7 @@ module falafel_core
 
   localparam SEL_REAL_BLOCK = 1'b0;  // when loading an actual block
   localparam SEL_FAKE_BLOCK = 1'b1;  // when loading the free ptr we cast it to a block
-  logic        sel_block;
+  logic sel_block, sel_block_q;
 
   // LSU signals
   logic        lsu_req_val;  // request valid
@@ -387,7 +387,7 @@ module falafel_core
       end
 
       STATE_FREE_PROCESS_BLOCK: begin
-        if (next_block_ptr_q > free_ptr_q || bp_is_null) begin
+        if ((next_block_ptr_q > free_ptr_q && !sel_block_q) || bp_is_null) begin
           state_d = STATE_FREE_INSERT_BLOCK;
         end else begin
           state_d = STATE_FREE_LOAD_BLOCK;
@@ -419,8 +419,8 @@ module falafel_core
 
       STATE_FREE_UPDATE_FREELIST: begin
         lsu_req_val  = 1'b1;
-        // lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
-        lsu_req_addr = prev_block_ptr_q;
+        lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        // lsu_req_addr = prev_block_ptr_q;
         lsu_req_op   = LSU_OP_STORE_WORD;
         lsu_req_word = free_ptr_q;
 
@@ -501,6 +501,7 @@ module falafel_core
       next_block_ptr_q <= '0;
       target_block_ptr_q <= '0;
       free_ptr_q <= '0;
+      sel_block_q <= '0;
     end else begin
       state_q <= state_d;
       alloc_size_q <= alloc_size_d;
@@ -512,6 +513,7 @@ module falafel_core
       next_block_ptr_q <= next_block_ptr_d;
       target_block_ptr_q <= target_block_ptr_d;
       free_ptr_q <= free_ptr_d;
+      sel_block_q <= sel_block;
     end
   end
 
