@@ -150,3 +150,60 @@ async def test_load_store_blocks(dut):
         assert b == d, "values don't match"
 
     await Timer(100, units=UNITS)
+
+
+
+@cocotb.test()
+async def test_mix_words_blocks(dut):
+    """Test mixing words and blocks"""
+
+    clk = dut.clk_i
+    cocotb.start_soon(Clock(clk, CLK_PERIOD, units=UNITS).start())
+
+    lsu_req_bus = FalafelLsuRequestBus(
+        dut, "alloc_req", {'val': 'val_i', 'rdy': 'rdy_o', 'op': 'op_i',
+                           'addr': 'addr_i', 'word': 'word_i', 'block_size':
+                           'block_size_i', 'block_next_ptr': 'block_next_ptr_i'})
+
+    lsu_rsp_bus = FalafelLsuResponseBus(
+        dut, "alloc_rsp", {'val': 'val_o', 'rdy': 'rdy_i', 'word': 'word_o',
+                           'block_size': 'block_size_o', 'block_next_ptr':
+                           'block_next_ptr_o'})
+
+    lsu_req_driver = FalafelLsuRequestDriver(lsu_req_bus, clk)
+    lsu_rsp_monitor = FalafelLsuResponseMonitor(lsu_rsp_bus, clk)
+
+    await reset_dut(dut, clk)
+
+    await cocotb.start(sim_time_counter(dut, clk))
+    await cocotb.start(mem_monitor(dut, clk))
+
+    await lsu_req_driver.store_block(0, (3, 4))
+    await lsu_rsp_monitor.recv()
+
+    await lsu_req_driver.store_word(16, 5)
+    await lsu_rsp_monitor.recv()
+
+    await lsu_req_driver.store_block(24, (6, 7))
+    await lsu_rsp_monitor.recv()
+
+    await lsu_req_driver.store_word(40, 8)
+    await lsu_rsp_monitor.recv()
+
+    await lsu_req_driver.load_block(24)
+    (_, b) = await lsu_rsp_monitor.recv()
+    assert b == (6, 7), "values don't match"
+
+    await lsu_req_driver.load_word(16)
+    (w, _) = await lsu_rsp_monitor.recv()
+    assert w == 5, "values don't match"
+
+    await lsu_req_driver.load_block(0)
+    (_, b) = await lsu_rsp_monitor.recv()
+    assert b == (3, 4), "values don't match"
+
+    await lsu_req_driver.load_word(40)
+    (w, _) = await lsu_rsp_monitor.recv()
+    assert w == 8, "values don't match"
+
+    await Timer(100, units=UNITS)

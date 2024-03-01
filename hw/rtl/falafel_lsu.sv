@@ -245,5 +245,4 @@ module falafel_lsu
       read_word_q <= read_word_d;
     end
   end
-
 endmodule
