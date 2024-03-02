@@ -84,17 +84,9 @@ module falafel_input_parser
 
         if (req_val_i && req_rdy_o) begin
           unique case (input_header.opcode)
-            REQ_ALLOC_MEM: begin
-              input_state_d = STATE_READ_ALLOC_DATA;
-            end
-
-            REQ_FREE_MEM: begin
-              input_state_d = STATE_READ_FREE_DATA;
-            end
-
-            REQ_ACCESS_REGISTER: begin
-              input_state_d = STATE_WRITE_CONFIG_REG;
-            end
+            REQ_ALLOC_MEM: input_state_d = STATE_READ_ALLOC_DATA;
+            REQ_FREE_MEM: input_state_d = STATE_READ_FREE_DATA;
+            REQ_ACCESS_REGISTER: input_state_d = STATE_WRITE_CONFIG_REG;
             default: ;
           endcase
 

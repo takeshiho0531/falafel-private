@@ -12,34 +12,33 @@ module falafel_input_parser_wrapper
     input  logic [DATA_W-1:0] req_data_i,
 
     //----------- fifo interfaces ------------//
-    input  logic              alloc_fifo_full_i,
-    output logic              alloc_fifo_write_o,
-    output logic [DATA_W-1:0] alloc_fifo_din_o,
-    input  logic              free_fifo_full_i,
-    output logic              free_fifo_write_o,
-    output logic [DATA_W-1:0] free_fifo_din_o,
+    input  logic              alloc_req_val_o,
+    output logic              alloc_req_rdy_i,
+    output logic [DATA_W-1:0] alloc_req_data_id_o,
+    output logic [DATA_W-1:0] alloc_req_data_size_o,
+
+    input  logic              free_req_val_o,
+    output logic              free_req_rdy_i,
+    output logic [DATA_W-1:0] free_req_data_id_o,
+    output logic [DATA_W-1:0] free_req_data_size_o,
 
     //----------- memory response ------------//
-    output word_t free_list_ptr_o
-
+    output logic              config_reg_write_o,
+    output logic [DATA_W-1:0] config_reg_data_o,
+    output logic [DATA_W-1:0] config_reg_addr_o
 );
 
-  config_regs_t config_regs;
+  alloc_entry_t alloc_req_data_struct;
+  alloc_entry_t free_req_data_struct;
 
   falafel_input_parser i_falafel_input_parser (
-      .clk_i,
-      .rst_ni,
-      .req_val_i,
-      .req_rdy_o,
-      .req_data_i,
-      .alloc_fifo_full_i,
-      .alloc_fifo_write_o,
-      .alloc_fifo_din_o,
-      .free_fifo_full_i,
-      .free_fifo_write_o,
-      .free_fifo_din_o,
-      .config_o(config_regs)
+      .alloc_req_data_o(alloc_req_data_struct),
+      .free_req_data_o (free_req_data_struct),
+      .*
   );
 
-  assign free_list_ptr_o = config_regs.free_list_ptr;
+  assign alloc_req_data_id_o   = alloc_req_data_struct.id;
+  assign alloc_req_data_size_o = alloc_req_data_struct.size;
+  assign free_req_data_id_o    = free_req_data_struct.id;
+  assign free_req_data_size_o  = free_req_data_struct.size;
 endmodule
