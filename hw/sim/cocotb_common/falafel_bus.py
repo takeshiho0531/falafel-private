@@ -18,7 +18,7 @@ class FalafelValRdyBus(Bus):
 
 class FalafelLsuRequestBus(Bus):
     _signalNames = ["val", "rdy", "op", "addr",
-                    "word",  "block_size", "block_next_ptr"]
+                    "word", "lock_id", "block_size", "block_next_ptr"]
 
     def __init__(self, entity, name, signals):
         for signal in self._signalNames:
@@ -42,7 +42,7 @@ class FalafelLsuResponseBus(Bus):
 
 
 class FalafelMemRequestBus(Bus):
-    _signalNames = ["val", "rdy", "is_write", "addr", "data"]
+    _signalNames = ["val", "rdy", "is_write", "is_cas", "addr", "data", "cas_exp"]
 
     def __init__(self, entity, name, signals):
         for signal in self._signalNames:
@@ -177,18 +177,24 @@ class FalafelLsuRequestDriver:
     LSU_OP_UNLOCK = 5
 
     async def load_word(self, addr):
-        await self._send(self.LSU_OP_LOAD_WORD, addr, 0, (0, 0))
+        await self._send(self.LSU_OP_LOAD_WORD, addr, 0, 0, (0, 0))
 
     async def store_word(self, addr, word):
-        await self._send(self.LSU_OP_STORE_WORD, addr, word, (0, 0))
+        await self._send(self.LSU_OP_STORE_WORD, addr, word, 0, (0, 0))
 
     async def load_block(self, addr):
-        await self._send(self.LSU_OP_LOAD_BLOCK, addr, 0, (0, 0))
+        await self._send(self.LSU_OP_LOAD_BLOCK, addr, 0, 0, (0, 0))
 
     async def store_block(self, addr, block):
-        await self._send(self.LSU_OP_STORE_BLOCK, addr, 0, block)
+        await self._send(self.LSU_OP_STORE_BLOCK, addr, 0, 0, block)
 
-    async def _send(self, op, addr, word, block):
+    async def lock(self, addr, lock_id):
+        await self._send(self.LSU_OP_LOCK, addr, 0, lock_id, (0, 0))
+
+    async def unlock(self, addr):
+        await self._send(self.LSU_OP_UNLOCK, addr, 0, 0, (0, 0))
+
+    async def _send(self, op, addr, word, lock_id, block):
         (block_size, block_next_ptr) = block
 
         await RisingEdge(self.clk)
@@ -196,6 +202,7 @@ class FalafelLsuRequestDriver:
         self.bus.op.value = op
         self.bus.addr.value = addr
         self.bus.word.value = word
+        self.bus.lock_id.value = lock_id
         self.bus.block_size.value = block_size
         self.bus.block_next_ptr.value = block_next_ptr
 
@@ -250,14 +257,16 @@ class FalafelMemRequestMonitor:
             await ReadOnly()
 
         is_write = int(self.bus.is_write)
+        is_cas = int(self.bus.is_cas)
         addr = int(self.bus.addr)
         data = int(self.bus.data)
+        cas_exp = int(self.bus.cas_exp)
 
         await RisingEdge(self.clk)
         self.bus.rdy.value = 0
 
         # print('mem req recv: (is_write, addr, data):', (is_write, addr, data))
-        return (is_write, addr, data)
+        return (is_write, is_cas, addr, data, cas_exp)
 
 
 class FalafelMemResponseDriver:

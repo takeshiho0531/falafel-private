@@ -19,11 +19,13 @@ module falafel_core
     output logic [DATA_W-1:0] resp_fifo_din_o,
 
     //----------- memory request -----------//
-    input  logic              mem_req_rdy_i,       // mem ready
     output logic              mem_req_val_o,       // req valid
-    output logic              mem_req_is_write_i,  // 1 for write, 0 for read
+    input  logic              mem_req_rdy_i,       // mem ready
+    output logic              mem_req_is_write_o,  // 1 for write, 0 for read
+    output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_rsp_val_i,  // resp valid
@@ -41,6 +43,8 @@ module falafel_core
     STATE_INIT,
     STATE_IDLE,
 
+    STATE_ALLOC_ACQUIRE_LOCK,
+    STATE_ALLOC_WAIT_ACQUIRE_LOCK,
     STATE_ALLOC_CHECK_SIZE,
     STATE_ALLOC_LOAD_FREE_PTR,
     STATE_ALLOC_WAIT_FREE_PTR,
@@ -54,8 +58,12 @@ module falafel_core
     STATE_ALLOC_WAIT_UPDATE,
     STATE_ALLOC_REMOVE_FREELIST,
     STATE_ALLOC_WAIT_REMOVE,
+    STATE_ALLOC_RELEASE_LOCK,
+    STATE_ALLOC_WAIT_RELEASE_LOCK,
     STATE_WRITE_RESPONSE,
 
+    STATE_FREE_ACQUIRE_LOCK,
+    STATE_FREE_WAIT_ACQUIRE_LOCK,
     STATE_FREE_LOAD_SIZE,
     STATE_FREE_WAIT_LOAD_SIZE,
     STATE_FREE_LOAD_FREE_PTR,
@@ -67,6 +75,8 @@ module falafel_core
     STATE_FREE_WAIT_INSERT_BLOCK,
     STATE_FREE_UPDATE_FREELIST,
     STATE_FREE_WAIT_UPDATE,
+    STATE_FREE_RELEASE_LOCK,
+    STATE_FREE_WAIT_RELEASE_LOCK,
 
     STATE_SBRK,  // TODO
     STATE_ADD_BLOCK,  // TODO
@@ -155,16 +165,34 @@ module falafel_core
 
       STATE_IDLE: begin
         if (!alloc_fifo_empty_i) begin
-          state_d = STATE_ALLOC_CHECK_SIZE;
+          state_d = STATE_ALLOC_ACQUIRE_LOCK;
 
           alloc_fifo_read_o = 1'b1;
           alloc_size_d = alloc_fifo_dout_i;
 
         end else if (!free_fifo_empty_i) begin
-          state_d = STATE_FREE_LOAD_SIZE;
+          state_d = STATE_FREE_ACQUIRE_LOCK;
 
           free_fifo_read_o = 1'b1;
           free_ptr_d = free_fifo_dout_i;
+        end
+      end
+
+      STATE_ALLOC_ACQUIRE_LOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = falafel_config_i.lock_ptr;
+        lsu_req_op   = LSU_OP_LOCK;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_ALLOC_WAIT_ACQUIRE_LOCK;
+        end
+      end
+
+      STATE_ALLOC_WAIT_ACQUIRE_LOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_ALLOC_CHECK_SIZE;
         end
       end
 
@@ -173,7 +201,7 @@ module falafel_core
           state_d = STATE_ALLOC_LOAD_FREE_PTR;
           alloc_size_d = align_size(alloc_size_q, BLOCK_ALIGNMENT);
         end else begin
-          state_d = STATE_WRITE_RESPONSE;
+          state_d = STATE_ALLOC_RELEASE_LOCK;
           alloc_ptr_d = NULL_PTR;
         end
       end
@@ -227,7 +255,7 @@ module falafel_core
         end else if (bp_is_null) begin
           // state_d = STATE_SBRK;
           // TODO
-          state_d = STATE_WRITE_RESPONSE;
+          state_d = STATE_ALLOC_RELEASE_LOCK;
           alloc_ptr_d = ERR_NOMEM;
         end else begin
           state_d = STATE_ALLOC_LOAD_BLOCK;
@@ -308,6 +336,24 @@ module falafel_core
         lsu_rsp_rdy = 1'b1;
 
         if (lsu_rsp_val) begin
+          state_d = STATE_ALLOC_RELEASE_LOCK;
+        end
+      end
+
+      STATE_ALLOC_RELEASE_LOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = falafel_config_i.lock_ptr;
+        lsu_req_op   = LSU_OP_UNLOCK;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_ALLOC_WAIT_RELEASE_LOCK;
+        end
+      end
+
+      STATE_ALLOC_WAIT_RELEASE_LOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
           state_d = STATE_WRITE_RESPONSE;
         end
       end
@@ -317,6 +363,24 @@ module falafel_core
           state_d = STATE_IDLE;
           resp_fifo_write_o = 1'b1;
           resp_fifo_din_o = alloc_ptr_q;
+        end
+      end
+
+      STATE_FREE_ACQUIRE_LOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = falafel_config_i.lock_ptr;
+        lsu_req_op   = LSU_OP_LOCK;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_ACQUIRE_LOCK;
+        end
+      end
+
+      STATE_FREE_WAIT_ACQUIRE_LOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_FREE_LOAD_SIZE;
         end
       end
 
@@ -418,10 +482,10 @@ module falafel_core
       end
 
       STATE_FREE_UPDATE_FREELIST: begin
-        lsu_req_val  = 1'b1;
-        lsu_req_addr = prev_block_ptr_q + WORD_SIZE;
+        lsu_req_val = 1'b1;
+        lsu_req_addr = (prev_block_ptr_q == falafel_config_i.free_list_ptr) ? prev_block_ptr_q : prev_block_ptr_q + WORD_SIZE;
         // lsu_req_addr = prev_block_ptr_q;
-        lsu_req_op   = LSU_OP_STORE_WORD;
+        lsu_req_op = LSU_OP_STORE_WORD;
         lsu_req_word = free_ptr_q;
 
         if (lsu_req_rdy) begin
@@ -433,7 +497,26 @@ module falafel_core
         lsu_rsp_rdy = 1'b1;
 
         if (lsu_rsp_val) begin
-          state_d = STATE_IDLE;  // TODO: should check possible merging
+          state_d = STATE_FREE_RELEASE_LOCK;  // TODO: should check possible merging
+        end
+      end
+
+
+      STATE_FREE_RELEASE_LOCK: begin
+        lsu_req_val  = 1'b1;
+        lsu_req_addr = falafel_config_i.lock_ptr;
+        lsu_req_op   = LSU_OP_UNLOCK;
+
+        if (lsu_req_rdy) begin
+          state_d = STATE_FREE_WAIT_RELEASE_LOCK;
+        end
+      end
+
+      STATE_FREE_WAIT_RELEASE_LOCK: begin
+        lsu_rsp_rdy = 1'b1;
+
+        if (lsu_rsp_val) begin
+          state_d = STATE_IDLE;
         end
       end
 
@@ -457,22 +540,25 @@ module falafel_core
       .clk_i,
       .rst_ni,
 
-      .alloc_req_val_i  (lsu_req_val),
-      .alloc_req_rdy_o  (lsu_req_rdy),
-      .alloc_req_op_i   (lsu_req_op),
-      .alloc_req_addr_i (lsu_req_addr),
-      .alloc_req_word_i (lsu_req_word),
-      .alloc_req_block_i(lsu_req_block),
-      .alloc_rsp_val_o  (lsu_rsp_val),
-      .alloc_rsp_rdy_i  (lsu_rsp_rdy),
-      .alloc_rsp_word_o (lsu_rsp_word),
-      .alloc_rsp_block_o(lsu_rsp_block),
+      .alloc_req_val_i    (lsu_req_val),
+      .alloc_req_rdy_o    (lsu_req_rdy),
+      .alloc_req_op_i     (lsu_req_op),
+      .alloc_req_addr_i   (lsu_req_addr),
+      .alloc_req_word_i   (lsu_req_word),
+      .alloc_req_block_i  (lsu_req_block),
+      .alloc_rsp_val_o    (lsu_rsp_val),
+      .alloc_rsp_rdy_i    (lsu_rsp_rdy),
+      .alloc_rsp_word_o   (lsu_rsp_word),
+      .alloc_req_lock_id_i(falafel_config_i.lock_id),
+      .alloc_rsp_block_o  (lsu_rsp_block),
 
       .mem_req_rdy_i,
       .mem_req_val_o,
-      .mem_req_is_write_i,
+      .mem_req_is_write_o,
+      .mem_req_is_cas_o,
       .mem_req_addr_o,
       .mem_req_data_o,
+      .mem_req_cas_exp_o,
       .mem_rsp_val_i,
       .mem_rsp_rdy_o,
       .mem_rsp_data_i
@@ -516,5 +602,4 @@ module falafel_core
       sel_block_q <= sel_block;
     end
   end
-
 endmodule

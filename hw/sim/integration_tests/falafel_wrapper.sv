@@ -21,11 +21,13 @@ module falafel_wrapper
     output logic [DATA_W-1:0] resp_data_o,
 
     //----------- memory request ------------//
-    input  logic              mem_req_rdy_i,       // mem ready
     output logic              mem_req_val_o,       // req valid
-    output logic              mem_req_is_write_i,  // 1 for write, 0 for read
+    input  logic              mem_req_rdy_i,       // mem ready
+    output logic              mem_req_is_write_o,  // 1 for write, 0 for read
+    output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_resp_val_i,  // resp valid

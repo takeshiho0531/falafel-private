@@ -21,6 +21,8 @@ module falafel_config_regs
     if (write_i) begin
       unique case (addr_i)
         FREE_LIST_PTR_ADDR: config_d.free_list_ptr = word_t'(data_i);
+        LOCK_PTR_ADDR: config_d.lock_ptr = word_t'(data_i);
+        LOCK_ID_ADDR: config_d.lock_id = word_t'(data_i);
         default: ;
       endcase
     end

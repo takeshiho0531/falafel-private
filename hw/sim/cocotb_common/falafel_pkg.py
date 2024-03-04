@@ -15,6 +15,8 @@ REQ_FREE_MEM = 2
 
 # addresses
 FREE_LIST_PTR_ADDR = 0x10
+LOCK_PTR_ADDR = 0x18
+LOCK_ID_ADDR = 0x20
 
 
 def write_config_req(req_id, addr):

@@ -40,8 +40,9 @@ async def sim_time_counter(dut, clk):
 
 
 async def mem_monitor(dut, clk, mem):
-    mem_req_bus = FalafelMemRequestBus(dut, "mem_req", {'val': 'val_o', 'rdy': 'rdy_i', 'is_write':
-                                                        'is_write_i', 'addr': 'addr_o', 'data': 'data_o'})
+    mem_req_bus = FalafelMemRequestBus(dut, "mem_req", {'val': 'val_o', 'rdy': 'rdy_i', 'is_write': 'is_write_o',
+                                                        'is_cas': 'is_cas_o', 'cas_exp': 'cas_exp_o',
+                                                        'addr': 'addr_o', 'data': 'data_o'})
     mem_rsp_bus = FalafelMemResponseBus(
         dut, "mem_rsp", {'val': 'val_i', 'rdy': 'rdy_o', 'data': 'data_i'})
 
@@ -51,17 +52,23 @@ async def mem_monitor(dut, clk, mem):
     await RisingEdge(clk)
 
     while True:
-        (is_write, addr, data) = await mem_req_monitor.recv()
+        (is_write, is_cas, addr, data, cas_exp) = await mem_req_monitor.recv()
+        # print((is_write, is_cas, addr, data, cas_exp))
 
         norm_addr = addr//WORD_SIZE
+        # print('norm_addr', norm_addr)
 
-        if is_write:
-            # print('mem[norm_addr] =', data)
+        if is_cas:
+            if mem[norm_addr] == cas_exp:
+                mem[norm_addr] = data
+                data = 0
+            else:
+                data = 1
+        elif is_write:
             mem[norm_addr] = data
         else:
             assert norm_addr in mem, "Accessed uninitialized mem[{}]".format(
                 norm_addr)
-            # print('mem[' + str(norm_addr) + '] =', mem[norm_addr])
             data = mem[norm_addr]
 
         await mem_rsp_driver.send(data)
@@ -89,9 +96,14 @@ async def test_simple_alloc(dut):
     resp_fifo_driver = FalafelFifoWriteSlave(resp_fifo_bus, clk)
 
     free_list_ptr = 0x20
+    lock_ptr = 0x28
+    lock_id = 1
     dut.falafel_config_free_list_ptr.value = free_list_ptr
+    dut.falafel_config_lock_ptr.value = lock_ptr
+    dut.falafel_config_lock_id.value = lock_id
 
     mem = {}
+    mem[lock_ptr//WORD_SIZE] = 0
 
     blocks = [
         Block(160, 32),
@@ -166,9 +178,14 @@ async def test_simple_frees(dut):
     resp_fifo_driver = FalafelFifoWriteSlave(resp_fifo_bus, clk)
 
     free_list_ptr = 0x20
+    lock_ptr = 0x28
+    lock_id = 1
     dut.falafel_config_free_list_ptr.value = free_list_ptr
+    dut.falafel_config_lock_ptr.value = lock_ptr
+    dut.falafel_config_lock_id.value = lock_id
 
     mem = {}
+    mem[lock_ptr//WORD_SIZE] = 0
 
     blocks = [
         Block(160, 32),

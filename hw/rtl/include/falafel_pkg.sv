@@ -13,6 +13,7 @@ package falafel_pkg;
   ///////////////
 
   localparam word_t NULL_PTR = '0;
+  localparam word_t EMPTY_KEY = '0;
   localparam word_t WORD_SIZE = 8;
   localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
 
@@ -46,11 +47,15 @@ package falafel_pkg;
 
   // Configuration registers addresses
   localparam FREE_LIST_PTR_ADDR = 'h10;
+  localparam LOCK_PTR_ADDR = 'h18;
+  localparam LOCK_ID_ADDR = 'h20;
 
   // Internal configuration registers
   typedef struct packed {
     // logic is_on;
     logic [DATA_W-1:0] free_list_ptr;
+    logic [DATA_W-1:0] lock_ptr;
+    logic [DATA_W-1:0] lock_id;
   } config_regs_t;
 
 

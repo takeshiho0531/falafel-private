@@ -21,11 +21,13 @@ module falafel
     output logic [DATA_W-1:0] resp_data_o,
 
     //----------- memory request ------------//
-    input  logic              mem_req_rdy_i,       // mem ready
     output logic              mem_req_val_o,       // req valid
-    output logic              mem_req_is_write_i,  // 1 for write, 0 for read
+    input  logic              mem_req_rdy_i,       // mem ready
+    output logic              mem_req_is_write_o,  // 1 for write, 0 for read
+    output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_resp_val_i,  // resp valid
@@ -121,9 +123,11 @@ module falafel
       .resp_fifo_din_o   (resp_fifo_din),
       .mem_req_rdy_i,
       .mem_req_val_o,
-      .mem_req_is_write_i,
+      .mem_req_is_write_o,
+      .mem_req_is_cas_o,
       .mem_req_addr_o,
       .mem_req_data_o,
+      .mem_req_cas_exp_o,
       .mem_rsp_val_i     (mem_resp_val_i),
       .mem_rsp_rdy_o     (mem_resp_rdy_o),
       .mem_rsp_data_i    (mem_resp_data_i),
