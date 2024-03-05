@@ -1,8 +1,10 @@
 module falafel_output_fsm
   import falafel_pkg::*;
 (
+    // verilator lint_off UNUSEDSIGNAL
     input logic clk_i,
     input logic rst_ni,
+    // verilator lint_on UNUSEDSIGNAL
 
     //-------------- response ---------------//
     input  logic              rsp_rdy_i,

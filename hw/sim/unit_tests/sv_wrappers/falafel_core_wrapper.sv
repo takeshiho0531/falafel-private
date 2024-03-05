@@ -40,8 +40,7 @@ module falafel_core_wrapper
     //----------- fifo interfaces ------------//
     output logic              sbrk_req_val_o,
     input  logic              sbrk_rsp_val_i,
-    input  logic [DATA_W-1:0] sbrk_rsp_ptr_o
-
+    input  logic [DATA_W-1:0] sbrk_rsp_ptr_i
 );
 
   config_regs_t falafel_config;

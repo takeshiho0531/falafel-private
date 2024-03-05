@@ -46,8 +46,8 @@ module falafel_input_arbiter
 
   generate
     begin : g_header_queues
-      for (genvar i = 0; i < NUM_HEADER_QUEUES; i++) begin
-        if (i == 0) begin : g_header_i0
+      for (genvar i = 0; i < NUM_HEADER_QUEUES; i++) begin : g_header_i
+        if (i == 0) begin : g_header_n0
           falafel_input_parser i_falafel_input_parser (
               .clk_i,
               .rst_ni,
@@ -64,7 +64,7 @@ module falafel_input_arbiter
               .config_reg_data_o (config_reg_data),
               .config_reg_addr_o (config_reg_addr)
           );
-        end else begin : g_header_i
+        end else begin : g_header_n
           // verilator lint_off PINMISSING
           falafel_input_parser i_falafel_input_parser (
               .clk_i,
@@ -87,7 +87,9 @@ module falafel_input_arbiter
 
   generate
     begin : g_alloc_queues
-      for (genvar i = NUM_HEADER_QUEUES; i < NUM_HEADER_QUEUES + NUM_ALLOC_QUEUES; i++) begin
+      for (
+          genvar i = NUM_HEADER_QUEUES; i < NUM_HEADER_QUEUES + NUM_ALLOC_QUEUES; i++
+      ) begin : g_alloc_i
         falafel_input_buffer i_falafel_input_buffer (
             .clk_i,
             .rst_ni,
@@ -104,7 +106,9 @@ module falafel_input_arbiter
 
   generate
     begin : g_free_queues
-      for (genvar i = NUM_HEADER_QUEUES; i < NUM_HEADER_QUEUES + NUM_FREE_QUEUES; i++) begin
+      for (
+          genvar i = NUM_HEADER_QUEUES; i < NUM_HEADER_QUEUES + NUM_FREE_QUEUES; i++
+      ) begin : g_free_i
         falafel_input_buffer i_falafel_input_buffer (
             .clk_i,
             .rst_ni,

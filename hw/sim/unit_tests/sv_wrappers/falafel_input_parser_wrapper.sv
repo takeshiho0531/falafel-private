@@ -12,15 +12,15 @@ module falafel_input_parser_wrapper
     input  logic [DATA_W-1:0] req_data_i,
 
     //----------- fifo interfaces ------------//
-    input  logic              alloc_req_val_o,
-    output logic              alloc_req_rdy_i,
-    output logic [DATA_W-1:0] alloc_req_data_id_o,
-    output logic [DATA_W-1:0] alloc_req_data_size_o,
+    output logic                   alloc_req_val_o,
+    input  logic                   alloc_req_rdy_i,
+    output logic [MSG_ID_SIZE-1:0] alloc_req_data_id_o,
+    output logic [     DATA_W-1:0] alloc_req_data_size_o,
 
-    input  logic              free_req_val_o,
-    output logic              free_req_rdy_i,
-    output logic [DATA_W-1:0] free_req_data_id_o,
-    output logic [DATA_W-1:0] free_req_data_size_o,
+    output logic                   free_req_val_o,
+    input  logic                   free_req_rdy_i,
+    output logic [MSG_ID_SIZE-1:0] free_req_data_id_o,
+    output logic [     DATA_W-1:0] free_req_data_size_o,
 
     //----------- memory response ------------//
     output logic              config_reg_write_o,

@@ -43,8 +43,8 @@ module falafel
   logic alloc_fifo_read_en;
   logic alloc_fifo_full;
   logic alloc_fifo_empty;
-  logic [DATA_W-1:0] alloc_fifo_din_id;
-  logic [MSG_ID_SIZE-1:0] alloc_fifo_din_size;
+  logic [MSG_ID_SIZE-1:0] alloc_fifo_din_id;
+  logic [DATA_W-1:0] alloc_fifo_din_size;
   logic [ALLOC_ENTRY_WIDTH-1:0] alloc_fifo_din;
   logic [ALLOC_ENTRY_WIDTH-1:0] alloc_fifo_dout;
   logic [DATA_W-1:0] alloc_fifo_dout_size;
@@ -63,9 +63,11 @@ module falafel
   logic [DATA_W-1:0] resp_fifo_din;
   logic [DATA_W-1:0] resp_fifo_dout;
 
+  // verilator lint_off UNUSEDSIGNAL
   logic sbrk_req_val;
   logic sbrk_rsp_val;
   word_t sbrk_rsp_ptr;
+  // verilator lint_on UNUSEDSIGNAL
 
   assign sbrk_rsp_val = 1'b0;
   assign sbrk_rsp_ptr = NULL_PTR;
@@ -133,7 +135,7 @@ module falafel
       .mem_rsp_data_i    (mem_resp_data_i),
       .sbrk_req_val_o    (sbrk_req_val),
       .sbrk_rsp_val_i    (sbrk_rsp_val),
-      .sbrk_rsp_ptr_o    (sbrk_rsp_ptr)
+      .sbrk_rsp_ptr_i    (sbrk_rsp_ptr)
   );
 
   falafel_fifo #(

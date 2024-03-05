@@ -84,7 +84,7 @@ async def mem_monitor(dut, clk, mem):
                 norm_addr)
             data = mem[norm_addr]
 
-        mem_print((is_write, is_cas, addr, write_data, cas_exp), data)
+        # mem_print((is_write, is_cas, addr, write_data, cas_exp), data)
         await mem_rsp_driver.send(data)
 
 

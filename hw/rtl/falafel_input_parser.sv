@@ -57,7 +57,9 @@ module falafel_input_parser
   // variables for casting
   alloc_entry_t                         fifo_din;
   base_header_t                         input_header;
+  // verilator lint_off UNUSEDSIGNAL
   config_reg_header_t                   input_config_header;
+  // verilator lint_on UNUSEDSIGNAL
 
 
   assign input_header = base_header_t'(req_data_i);

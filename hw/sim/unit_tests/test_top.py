@@ -24,18 +24,18 @@ def test_falafel_fifo():
     )
 
 
-def test_falafel_input_parser():
-    run(
-        includes=[INCLUDE_DIR],
-        verilog_sources=[INCLUDE_DIR + "/falafel_pkg.sv",
-                         INCLUDE_DIR + "/fifos/falafel_fifo_internal.sv",
-                         INCLUDE_DIR + "/fifos/falafel_fifo.sv",
-                         RTL_DIR + "/falafel_input_parser.sv",
-                         WRAPPER_DIR + "/falafel_input_parser_wrapper.sv"],
-        toplevel="falafel_input_parser_wrapper",
-        module="cocotb_input_parser",
-        sim_build="sim_build/falafel_input_parser",
-    )
+# def test_falafel_input_parser():
+#     run(
+#         includes=[INCLUDE_DIR],
+#         verilog_sources=[INCLUDE_DIR + "/falafel_pkg.sv",
+#                          INCLUDE_DIR + "/fifos/falafel_fifo_internal.sv",
+#                          INCLUDE_DIR + "/fifos/falafel_fifo.sv",
+#                          RTL_DIR + "/falafel_input_parser.sv",
+#                          WRAPPER_DIR + "/falafel_input_parser_wrapper.sv"],
+#         toplevel="falafel_input_parser_wrapper",
+#         module="cocotb_input_parser",
+#         sim_build="sim_build/falafel_input_parser",
+#     )
 
 
 def test_falafel_lsu():

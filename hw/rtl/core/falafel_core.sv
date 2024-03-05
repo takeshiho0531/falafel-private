@@ -33,9 +33,11 @@ module falafel_core
     input  logic [DATA_W-1:0] mem_rsp_data_i, // resp data
 
     //----------- fifo interfaces ------------//
+    // verilator lint_off UNUSEDSIGNAL
     output logic  sbrk_req_val_o,
     input  logic  sbrk_rsp_val_i,
-    input  word_t sbrk_rsp_ptr_o
+    input  word_t sbrk_rsp_ptr_i
+    // verilator lint_on UNUSEDSIGNAL
 );
 
 

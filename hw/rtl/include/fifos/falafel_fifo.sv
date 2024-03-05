@@ -16,9 +16,6 @@ module falafel_fifo #(
     output logic [DATA_W-1:0] dout_o  // output data
 );
 
-  localparam ADDR_W = $clog2(NUM_ENTRIES);
-  localparam MAX_ENTRY = ADDR_W'(NUM_ENTRIES - 1);
-
   logic internal_write;
   logic internal_read;
   logic internal_empty;
