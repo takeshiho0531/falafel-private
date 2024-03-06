@@ -1,4 +1,4 @@
-// The code code below has been taken from
+// Most the code code below has been modified from
 // https://github.com/embeddedartistry/embedded-resources/tree/master
 
 #ifndef __MALLOC_FREELIST_H_
@@ -24,6 +24,8 @@ void *fl_malloc(size_t size);
  * Corresponding free-list free implementation
  */
 void fl_free(void *ptr);
+
+void *get_free();
 
 #ifdef __cplusplus
 }

@@ -1,141 +1,149 @@
-// Most the code code below has been taken from
+// Most the code code below has been modified from
 // https://github.com/embeddedartistry/embedded-resources/tree/master
 // with some modifications to the alloc_node_t struct
 
-#include "linked_list.h"
 #include <stdint.h>
+#include <stdio.h>
 
-#pragma mark - Definitions -
-
-/**
- * Simple macro for making sure memory addresses are aligned
- * to the nearest power of two
- */
 #ifndef align_up
 #define align_up(num, align) (((num) + ((align)-1)) & ~((align)-1))
 #endif
 
-/*
- * This is the container for our free-list.
- * Node the usage of the linked list here: the library uses offsetof
- * and container_of to manage the list and get back to the parent struct.
- */
-
-/* typedef struct { */
-/*   ll_t node; */
-/*   size_t size; */
-/*   char *block; */
-/* } alloc_node_t; */
-
-typedef struct {
+typedef struct alloc_node {
   size_t size;
 
   union {
     char *block;
-    ll_t node;
-  }
+    struct alloc_node *next;
+  };
 } alloc_node_t;
 
-/**
- * We vend a memory address to the user.  This lets us translate back and forth
- * between the vended pointer and the container we use for managing the data.
- */
-#define ALLOC_HEADER_SZ offsetof(alloc_node_t, block)
+static inline void list_add_(alloc_node_t *n, alloc_node_t *prev,
+                             alloc_node_t *next) {
+  n->next = next;
+  prev->next = n;
+}
 
-// We are enforcing a minimum allocation size of 32B.
+static inline void list_del_(alloc_node_t *prev, alloc_node_t *n) {
+  prev->next = n->next;
+}
+
+/* #define ALLOC_HEADER_SZ offsetof(alloc_node_t, block) */
+#define ALLOC_HEADER_SZ 8 // TODO
+
 #define MIN_REQ_SZ 32
 #define MIN_ALLOC_SZ ALLOC_HEADER_SZ + MIN_REQ_SZ
 
-#pragma mark - Prototypes -
-
 static void defrag_free_list(void);
 
-#pragma mark - Declarations -
+alloc_node_t *free_list = NULL;
 
-// This macro simply declares and initializes our linked list
-static LIST_INIT(free_list);
+void *get_free() { return &free_list; }
 
-#pragma mark - Private Functions -
-
-/**
- * When we free, we can take our node and check to see if any memory blocks
- * can be combined into larger blocks.  This will help us fight against
- * memory fragmentation in a simple way.
- */
 void defrag_free_list(void) {
-  alloc_node_t *block, *last_block = NULL, *t;
+  alloc_node_t *prev_block = NULL;
+  alloc_node_t *current_block = free_list;
 
-  list_for_each_entry_safe(block, t, &free_list, node) {
-    if (last_block) {
-      if ((((uintptr_t)&last_block->block) + last_block->size) ==
-          (uintptr_t)block) {
-        last_block->size += ALLOC_HEADER_SZ + block->size;
-        list_del(&block->node);
-        continue;
+  while (current_block) {
+    if (current_block->next) {
+      alloc_node_t *next_block = current_block->next;
+
+      if ((uintptr_t)(void *)current_block->block + current_block->size ==
+          (uintptr_t)next_block) {
+
+        current_block->next = next_block->next;
+        current_block->size += next_block->size + ALLOC_HEADER_SZ;
       }
     }
-    last_block = block;
+
+    if (prev_block) {
+      if ((uintptr_t)(void *)prev_block->block + prev_block->size ==
+          (uintptr_t)current_block) {
+
+        prev_block->next = current_block->next;
+        prev_block->size += current_block->size + ALLOC_HEADER_SZ;
+      }
+    }
+
+    prev_block = current_block;
+    current_block = current_block->next;
   }
 }
-#pragma mark - APIs -
 
 void *fl_malloc(size_t size) {
   void *ptr = NULL;
-  alloc_node_t *blk = NULL;
+  alloc_node_t *blk = free_list;
+  alloc_node_t *prev = NULL;
 
   if (size > 0) {
-    // Align the pointer
     size = align_up(size, sizeof(void *));
     if (size < MIN_REQ_SZ)
       size = MIN_REQ_SZ;
 
-    // try to find a big enough block to alloc
-    list_for_each_entry(blk, &free_list, node) {
+    while (blk) {
       if (blk->size >= size) {
         ptr = &blk->block;
         break;
       }
+
+      blk = blk->next;
+      prev = blk;
     }
 
-    // we found something
     if (ptr) {
-      // Can we split the block?
       if ((blk->size - size) >= MIN_ALLOC_SZ) {
         alloc_node_t *new_blk;
         new_blk = (alloc_node_t *)((uintptr_t)(&blk->block) + size);
         new_blk->size = blk->size - size - ALLOC_HEADER_SZ;
         blk->size = size;
-        list_add_(&new_blk->node, &blk->node, blk->node.next);
+
+        list_add_(new_blk, blk, blk->next);
       }
 
-      list_del(&blk->node);
+      if (prev)
+        prev->next = blk->next;
+      else
+        free_list = blk->next;
     }
-
-  } // else NULL
+  }
 
   return ptr;
 }
 
 void fl_free(void *ptr) {
-  alloc_node_t *blk, *free_blk;
+  alloc_node_t *blk = NULL;
+  alloc_node_t *prev = NULL;
+  alloc_node_t *free_blk;
 
-  // Don't free a NULL pointer..
   if (ptr) {
-    // we take the pointer and use container_of to get the corresponding alloc
-    // block
-    blk = container_of(ptr, alloc_node_t, block);
+    blk = (alloc_node_t *)((char *)ptr - 8);
 
-    // Let's put it back in the proper spot
-    list_for_each_entry(free_blk, &free_list, node) {
+    prev = NULL;
+    free_blk = free_list;
+
+    while (free_blk) {
       if (free_blk > blk) {
-        list_add_(&blk->node, free_blk->node.prev, &free_blk->node);
+        if (prev)
+          list_add_(blk, prev, free_blk);
+        else {
+          blk->next = free_blk;
+          free_list = blk;
+        }
+
         goto blockadded;
       }
-    }
-    list_add_tail(&blk->node, &free_list);
 
+      prev = free_blk;
+      free_blk = free_blk->next;
+    }
+
+    if (free_list)
+      free_blk->next = blk;
+    else
+      free_list = blk;
+
+    blk->next = NULL;
   blockadded:
-    // Let's see if we can combine any memory
     defrag_free_list();
   }
 }
@@ -151,6 +159,6 @@ void malloc_addblock(void *addr, size_t size) {
   // availability
   blk->size = (uintptr_t)addr + size - (uintptr_t)blk - ALLOC_HEADER_SZ;
 
-  // and now our giant block of memory is added to the list!
-  list_add(&blk->node, &free_list);
+  /* list_add(&blk->node, &free_list); */
+  fl_free(&blk->block);
 }

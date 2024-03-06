@@ -9,7 +9,16 @@ int main() {
 
   malloc_addblock(init_block, INIT_SIZE);
 
-  printf("malloc(5) = %p\n", fl_malloc(5));
+  void *ptr = fl_malloc(5);
+  printf("added block\n");
+  printf("malloc(5) = %p\n", ptr);
+  printf("malloc(2340) = %p\n", fl_malloc(2340));
+  fl_free(ptr);
+  ptr = fl_malloc(5);
+  printf("malloc(5) = %p\n", ptr);
+
+  ptr = fl_malloc(5);
+  printf("malloc(5) = %p\n", ptr);
 
   return 0;
 }
