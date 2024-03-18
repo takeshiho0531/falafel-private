@@ -113,10 +113,10 @@ async def test_simple_alloc(dut):
     mem[lock_ptr//WORD_SIZE] = 0
 
     blocks = [
-        Block(160, 32),
-        Block(320, 128),
-        Block(1000, 32),
-        Block(2000, 56)
+        Block(192, 64),
+        Block(448, 192),
+        Block(1024, 64),
+        Block(1792, 192)
     ]
 
     falafel_block.list_to_mem(free_list_ptr, blocks, mem)
@@ -130,6 +130,8 @@ async def test_simple_alloc(dut):
     print('initial list', end=' ')
     falafel_block.print_list(blocks)
 
+
+    # Configure internal registers
     await req_driver.sendi(0, write_config_req(0, FREE_LIST_PTR_ADDR))
     await req_driver.sendi(0, free_list_ptr)
     await req_driver.sendi(0, write_config_req(0, LOCK_PTR_ADDR))
@@ -137,61 +139,66 @@ async def test_simple_alloc(dut):
     await req_driver.sendi(0, write_config_req(0, LOCK_ID_ADDR))
     await req_driver.sendi(0, lock_id)
 
+    # Send 1st allocation
     await req_driver.sendi(0, write_alloc_req(0))
     await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
-    assert ptr == 328
+    assert ptr == 256
 
-    await Timer(100, units=UNITS)
+    # Print state
+    await Timer(200, units=UNITS)
     print('after first alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    # await req_driver.sendi(0, write_alloc_req(0))
+    # Allocate 2nd block through alloc queue
     await req_driver.sendi(2, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
-    assert ptr == 376
+    assert ptr == 512
 
-    await Timer(100, units=UNITS)
+    # Print state
+    await Timer(500, units=UNITS)
     print('after second alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
-    # await req_driver.sendi(0, write_free_req(0))
-    # await req_driver.sendi(0, 328)
-    await req_driver.sendi(4, 328)
+    # Free first allocation through free queue
+    await req_driver.sendi(4, 256)
 
-    # await Timer(100, units=UNITS)
-    # await Timer(500, units=UNITS)
+    await Timer(500, units=UNITS)
     print('after first free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
+    # Free second allocation through free queue
     await req_driver.sendi(0, write_free_req(0))
-    await req_driver.sendi(0, 376)
+    await req_driver.sendi(0, 512)
 
-    # await Timer(100, units=UNITS)
-    # await Timer(500, units=UNITS)
-    # await Timer(500, units=UNITS)
+    # Print state
+    await Timer(500, units=UNITS)
     print('after second free', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
+    # Allocate 1st block again
     await req_driver.sendi(0, write_alloc_req(0))
     await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
-    assert ptr == 328
+    assert ptr == 256
 
-    await Timer(100, units=UNITS)
+    # Print state
+    await Timer(500, units=UNITS)
     print('first alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
+    # Allocate 2nd block again
     await req_driver.sendi(0, write_alloc_req(0))
     await req_driver.sendi(0, 35)
     ptr = await resp_monitor.recv()
     print('ptr', ptr)
-    assert ptr == 376
+    assert ptr == 512
 
-    await Timer(100, units=UNITS)
+    # Print state
+    await Timer(500, units=UNITS)
     print('second alloc', end=' ')
     falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 

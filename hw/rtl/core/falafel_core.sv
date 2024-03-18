@@ -272,10 +272,10 @@ module falafel_core
 
         if ((buffered_block_q.size - alloc_size_q) >= MIN_ALLOC_SIZE) begin
           state_d = STATE_ALLOC_UPDATE_OLD_BLOCK;
-          alloc_ptr_d = current_block_ptr_q + WORD_SIZE;
+          alloc_ptr_d = current_block_ptr_q + BLOCK_HEADER_SIZE;
         end else begin
           state_d = STATE_ALLOC_REMOVE_FREELIST;
-          alloc_ptr_d = current_block_ptr_q + WORD_SIZE;
+          alloc_ptr_d = current_block_ptr_q + BLOCK_HEADER_SIZE;
         end
       end
 
@@ -388,13 +388,13 @@ module falafel_core
 
       STATE_FREE_LOAD_SIZE: begin
         lsu_req_val  = 1'b1;
-        lsu_req_addr = free_ptr_q - WORD_SIZE;
+        lsu_req_addr = free_ptr_q - BLOCK_HEADER_SIZE;
         lsu_req_op   = LSU_OP_LOAD_WORD;
 
         if (lsu_req_rdy) begin
           state_d = STATE_FREE_WAIT_LOAD_SIZE;
 
-          free_ptr_d = free_ptr_q - WORD_SIZE;
+          free_ptr_d = free_ptr_q - BLOCK_HEADER_SIZE;
           current_block_ptr_d = lsu_req_addr;
           // prev_block_ptr_d = lsu_req_addr;
           // prev_block_ptr_d = current_block_ptr_q;

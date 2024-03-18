@@ -15,7 +15,8 @@ package falafel_pkg;
   localparam word_t NULL_PTR = '0;
   localparam word_t EMPTY_KEY = '0;
   localparam word_t WORD_SIZE = 8;
-  localparam word_t BLOCK_ALIGNMENT = WORD_SIZE;
+  localparam word_t L2_SIZE = 64;  // 64 bytes
+  localparam word_t BLOCK_ALIGNMENT = L2_SIZE;
 
   ////////////////////////
   // Input parser types //
@@ -70,7 +71,8 @@ package falafel_pkg;
   } free_block_t;
 
   // verilator lint_off WIDTHEXPAND
-  localparam word_t BLOCK_HEADER_SIZE = ($bits(free_block_t) / $bits(word_t) - 1) * WORD_SIZE;
+  // localparam word_t BLOCK_HEADER_SIZE = ($bits(free_block_t) / $bits(word_t) - 1) * WORD_SIZE;
+  localparam word_t BLOCK_HEADER_SIZE = L2_SIZE;
   // verilator lint_on WIDTHEXPAND
   localparam word_t MIN_PAYLOAD_SIZE = 32;
   localparam word_t MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
@@ -86,7 +88,8 @@ package falafel_pkg;
   } lsu_op_e;
 
   // Errors
-  localparam ERR_NOMEM = -1;
+  // localparam ERR_NOMEM = -1;
+  localparam ERR_NOMEM = 0;
 
   // Functions
   function word_t align_size(word_t size, word_t alignment);

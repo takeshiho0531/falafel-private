@@ -1,9 +1,9 @@
 module falafel
   import falafel_pkg::*;
 #(
-    parameter unsigned NUM_HEADER_QUEUES = 1,
-    parameter unsigned NUM_ALLOC_QUEUES  = 1,
-    parameter unsigned NUM_FREE_QUEUES   = 1,
+    parameter unsigned NUM_HEADER_QUEUES = 2,
+    parameter unsigned NUM_ALLOC_QUEUES  = 0,
+    parameter unsigned NUM_FREE_QUEUES   = 0,
 
     localparam unsigned NUM_QUEUES = NUM_HEADER_QUEUES + NUM_ALLOC_QUEUES + NUM_FREE_QUEUES
 ) (

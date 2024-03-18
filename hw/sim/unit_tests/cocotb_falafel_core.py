@@ -120,10 +120,10 @@ async def test_simple_alloc(dut):
     mem[lock_ptr//WORD_SIZE] = 0
 
     blocks = [
-        Block(160, 32),
-        Block(320, 128),
-        Block(1000, 32),
-        Block(2000, 56)
+        Block(192, 64),
+        Block(448, 192),
+        Block(1024, 64),
+        Block(1792, 192)
     ]
 
     falafel_block.list_to_mem(free_list_ptr, blocks, mem)
@@ -137,35 +137,35 @@ async def test_simple_alloc(dut):
 
     await Timer(20, units=UNITS)
 
-    # print('initial list', end=' ')
-    # falafel_block.print_list(blocks)
+    print('initial list', end=' ')
+    falafel_block.print_list(blocks)
 
     await alloc_fifo_driver.push(35)
     await alloc_fifo_driver.push(32)
-    await alloc_fifo_driver.push(100)
+    await alloc_fifo_driver.push(200)
     await alloc_fifo_driver.push(80)
     await alloc_fifo_driver.push(32)
-    await alloc_fifo_driver.push(50)
+    await alloc_fifo_driver.push(64)
     await alloc_fifo_driver.push(32)
 
     ptr = await resp_fifo_driver.pop()
-    assert ptr == 328, 'ptrs dont match'
+    assert ptr == 256, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
-    assert ptr == 168, 'ptrs dont match'
+    assert ptr == 512, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
     assert ptr == ERR_NOMEM, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
-    assert ptr == 376, 'ptrs dont match'
+    assert ptr == 640, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
-    assert ptr == 1008, 'ptrs dont match'
+    assert ptr == 1088, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
-    assert ptr == 2008, 'ptrs dont match'
+    assert ptr == 1792, 'ptrs dont match'
     ptr = await resp_fifo_driver.pop()
     assert ptr == ERR_NOMEM, 'ptrs dont match'
 
     await Timer(100, units=UNITS)
-    # print('final list', end=' ')
-    # falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
+    print('final list', end=' ')
+    falafel_block.print_list(falafel_block.mem_to_list(free_list_ptr, mem))
 
     await Timer(100, units=UNITS)
 
