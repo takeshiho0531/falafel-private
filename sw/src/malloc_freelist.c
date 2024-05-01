@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "malloc_freelist.h"
 
 #ifndef align_up
 #define align_up(num, align) (((num) + ((align)-1)) & ~((align)-1))

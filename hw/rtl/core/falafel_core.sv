@@ -166,17 +166,18 @@ module falafel_core
       end
 
       STATE_IDLE: begin
-        if (!alloc_fifo_empty_i) begin
-          state_d = STATE_ALLOC_ACQUIRE_LOCK;
-
-          alloc_fifo_read_o = 1'b1;
-          alloc_size_d = alloc_fifo_dout_i;
-
-        end else if (!free_fifo_empty_i) begin
+        if (!free_fifo_empty_i) begin
           state_d = STATE_FREE_ACQUIRE_LOCK;
 
           free_fifo_read_o = 1'b1;
           free_ptr_d = free_fifo_dout_i;
+          // $display("[%t] free request: %x", $realtime, free_fifo_dout_i);
+        end else if (!alloc_fifo_empty_i) begin
+          state_d = STATE_ALLOC_ACQUIRE_LOCK;
+
+          alloc_fifo_read_o = 1'b1;
+          alloc_size_d = alloc_fifo_dout_i;
+          // $display("[%t] alloc request: %d", $realtime, alloc_fifo_dout_i);
         end
       end
 
@@ -365,6 +366,7 @@ module falafel_core
           state_d = STATE_IDLE;
           resp_fifo_write_o = 1'b1;
           resp_fifo_din_o = alloc_ptr_q;
+          // $display("[%t] alloc resp ptr: %h", $realtime, alloc_ptr_q);
         end
       end
 
