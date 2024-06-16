@@ -74,7 +74,7 @@ package falafel_pkg;
   // localparam word_t BLOCK_HEADER_SIZE = ($bits(free_block_t) / $bits(word_t) - 1) * WORD_SIZE;
   localparam word_t BLOCK_HEADER_SIZE = L2_SIZE;
   // verilator lint_on WIDTHEXPAND
-  localparam word_t MIN_PAYLOAD_SIZE = 32;
+  localparam word_t MIN_PAYLOAD_SIZE = L2_SIZE;
   localparam word_t MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
   localparam word_t BLOCK_NEXT_PTR_OFFSET = 8;
 
