@@ -11,7 +11,7 @@ package allocator_pkg;
     SET_INSERT_ADDR,
     INSERT,
     DELETE
-  } lsu_op_e;
+  } req_lsu_op_e;
 
   typedef struct packed {
     logic [63:0] addr;
@@ -22,7 +22,7 @@ package allocator_pkg;
   typedef struct packed {
     header_data_t header_data;
     logic val;
-    lsu_op_e lsu_op;
+    req_lsu_op_e lsu_op;
   } header_data_req_t;
 
   typedef struct packed {

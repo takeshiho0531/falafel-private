@@ -8,7 +8,7 @@ module lsu_wrapper
 
     input logic req_metadata_val_i,
     input logic req_metadata_is_first_metadata_i,
-    input lsu_op_e req_metadata_which_req_i,
+    input req_lsu_op_e req_metadata_which_req_i,
     input logic [DATA_W-1:0] req_metadata_metadata_add_i,
     input logic [DATA_W-1:0] req_metadata_metadata_size_i,
     input logic [DATA_W-1:0] req_metadata_metadata_next_addr_i,

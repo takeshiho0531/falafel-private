@@ -40,7 +40,7 @@ module core
   logic [DATA_W-1:0] remaining_size, remaining_size_q;
   logic [DATA_W-1:0] fit_addr_d, fit_addr_q;
 
-  task automatic request_to_lsu(header_data_t header_data, lsu_op_e lsu_op);
+  task automatic request_to_lsu(header_data_t header_data, req_lsu_op_e lsu_op);
     req_to_lsu_o.header_data = header_data;
     req_to_lsu_o.lsu_op = lsu_op;
     req_to_lsu_o.val = 1;

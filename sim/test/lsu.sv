@@ -29,19 +29,23 @@ module lsu
   typedef enum integer {
     IDLE,
     LOAD_KEY,
-    WAIT_LOAD_KEY,
     LOCK_DO_CAS,
-    LOCK_WAIT_CAS,
     LOAD_SIZE,
-    RECV_RSP_ON_SIZE_FROM_MEM_LOAD,
     LOAD_NEXT_ADDR,
-    RECV_RSP_ON_NEXT_ADDR_FROM_MEM_LOAD,
     STORE_UPDATED_SIZE,
-    RECV_RSP_ON_SIZE_FROM_MEM_UPDATE,
     STORE_UPDATED_NEXT_ADDR,
-    RECV_RSP_ON_NEXT_ADDR_FROM_MEM_UPDATE,
+    WAIT_RSP_FROM_MEM,
     SEND_RSP_TO_CORE
   } lsu_state_e;
+
+  typedef enum integer {
+    LSU_LOAD_KEY,
+    LSU_DO_CAS,
+    LSU_LOAD_SIZE,
+    LSU_LOAD_NEXT_ADDR,
+    LSU_STORE_SIZE,
+    LSU_STORE_NEXT_ADDR
+  } lsu_op_e;
 
   lsu_state_e state_q, state_d;
   header_data_req_t req_header_data_q, req_header_data_d;
@@ -88,21 +92,24 @@ module lsu
           mem_rsp_rdy_o = 0;
 
           unique case (core_req_header_data_i.lsu_op)
-            LOCK: state_d = LOAD_KEY;
+            LOCK: begin
+              state_d  = LOAD_KEY;
+              lsu_op_d = LSU_LOAD_KEY;
+            end
             // UNLOCK:
             LOAD: begin
               state_d  = LOAD_SIZE;
-              lsu_op_d = LOAD;
+              lsu_op_d = LSU_LOAD_SIZE;
             end
             INSERT: begin
               state_d  = STORE_UPDATED_SIZE;
-              lsu_op_d = INSERT;
+              lsu_op_d = LSU_STORE_SIZE;
             end
             DELETE: begin
               state_d  = STORE_UPDATED_NEXT_ADDR;
-              lsu_op_d = DELETE;
+              lsu_op_d = LSU_STORE_NEXT_ADDR;
             end
-            default: assert (0);
+            default: ;
           endcase
         end
       end
@@ -111,15 +118,7 @@ module lsu
                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          state_d = WAIT_LOAD_KEY;
-        end
-      end
-      WAIT_LOAD_KEY: begin
-        mem_req_val_o = 0;
-        mem_rsp_rdy_o = 1;
-        if (mem_rsp_val_i) begin
-          if (mem_rsp_data_i == EMPTY_KEY) state_d = LOCK_DO_CAS;
-          else state_d = LOAD_KEY;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOCK_DO_CAS: begin
@@ -127,15 +126,7 @@ module lsu
         mem_req_data_o = '0;  // TODO lock id
         mem_req_val_o = 1;
         if (mem_req_rdy_i) begin
-          state_d = LOCK_WAIT_CAS;
-        end
-      end
-      LOCK_WAIT_CAS: begin
-        mem_req_val_o = 0;
-        mem_rsp_rdy_o = 1;
-        if (mem_rsp_val_i) begin
-          if (mem_rsp_data_i == 0) state_d = SEND_RSP_TO_CORE;  // we have taken the key
-          else state_d = LOAD_KEY;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOAD_SIZE: begin
@@ -143,15 +134,7 @@ module lsu
                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          state_d = RECV_RSP_ON_SIZE_FROM_MEM_LOAD;
-        end
-      end
-      RECV_RSP_ON_SIZE_FROM_MEM_LOAD: begin
-        mem_req_val_o = 0;
-        mem_rsp_rdy_o = 1;
-        if (mem_rsp_val_i) begin
-          state_d = LOAD_NEXT_ADDR;
-          rsp_header_data_d.header_data.size = mem_rsp_data_i;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOAD_NEXT_ADDR: begin
@@ -160,15 +143,7 @@ module lsu
             .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
             .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          state_d = RECV_RSP_ON_NEXT_ADDR_FROM_MEM_LOAD;
-        end
-      end
-      RECV_RSP_ON_NEXT_ADDR_FROM_MEM_LOAD: begin
-        mem_rsp_rdy_o = 1;
-        if (mem_rsp_val_i) begin
-          state_d = SEND_RSP_TO_CORE;
-          rsp_header_data_d.val = mem_rsp_val_i;
-          rsp_header_data_d.header_data.next_addr = mem_rsp_data_i;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
       STORE_UPDATED_SIZE: begin
@@ -178,23 +153,7 @@ module lsu
                            .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          mem_req_val_o = req_header_data_q.val;
-          mem_req_addr_o = req_header_data_q.header_data.addr;
-          mem_req_data_o = req_header_data_q.header_data.size;
-          mem_req_is_write_o = 1;
-
-          if (lsu_op_q == INSERT) begin
-            state_d = RECV_RSP_ON_SIZE_FROM_MEM_UPDATE;
-          end else begin
-            state_d = RECV_RSP_ON_NEXT_ADDR_FROM_MEM_UPDATE;
-          end
-        end
-      end
-      RECV_RSP_ON_SIZE_FROM_MEM_UPDATE: begin
-        mem_rsp_rdy_o = 1;
-        if (mem_rsp_val_i) begin
-          rsp_header_data_d.val = mem_rsp_val_i;
-          state_d = STORE_UPDATED_NEXT_ADDR;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
       STORE_UPDATED_NEXT_ADDR: begin
@@ -204,15 +163,45 @@ module lsu
             .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
             .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          state_d = RECV_RSP_ON_NEXT_ADDR_FROM_MEM_UPDATE;
+          state_d = WAIT_RSP_FROM_MEM;
         end
       end
-
-      RECV_RSP_ON_NEXT_ADDR_FROM_MEM_UPDATE: begin
+      WAIT_RSP_FROM_MEM: begin
         mem_rsp_rdy_o = 1;
         if (mem_rsp_val_i) begin
           rsp_header_data_d.val = mem_rsp_val_i;
-          state_d = SEND_RSP_TO_CORE;
+          if (lsu_op_q == LSU_LOAD_KEY) begin
+            if (mem_rsp_data_i == EMPTY_KEY) begin
+              state_d  = LOCK_DO_CAS;
+              lsu_op_d = LSU_DO_CAS;
+            end else begin
+              state_d = LOAD_KEY;
+            end
+          end
+          if (lsu_op_q == LSU_DO_CAS) begin
+            if (mem_rsp_data_i == 0) begin
+              state_d = SEND_RSP_TO_CORE;
+            end else begin
+              state_d  = LOAD_KEY;
+              lsu_op_d = LSU_LOAD_KEY;
+            end
+          end
+          if (lsu_op_q == LSU_LOAD_SIZE) begin
+            rsp_header_data_d.header_data.size = mem_rsp_data_i;
+            state_d = LOAD_NEXT_ADDR;
+            lsu_op_d = LSU_LOAD_NEXT_ADDR;
+          end
+          if (lsu_op_q == LSU_LOAD_NEXT_ADDR) begin
+            rsp_header_data_d.header_data.next_addr = mem_rsp_data_i;
+            state_d = SEND_RSP_TO_CORE;
+          end
+          if (lsu_op_q == LSU_STORE_SIZE) begin
+            state_d  = STORE_UPDATED_NEXT_ADDR;
+            lsu_op_d = LSU_STORE_NEXT_ADDR;
+          end
+          if (lsu_op_q == LSU_STORE_NEXT_ADDR) begin
+            state_d = SEND_RSP_TO_CORE;
+          end
         end
       end
 
@@ -225,7 +214,7 @@ module lsu
           state_d = IDLE;
         end
       end
-      // default: ;
+      default: ;
     endcase
   end
 
@@ -234,7 +223,7 @@ module lsu
       state_q <= IDLE;
       req_header_data_q <= '0;
       rsp_header_data_q <= '0;
-      lsu_op_q <= LOCK;
+      lsu_op_q <= LSU_LOAD_KEY;
     end else begin
       state_q <= state_d;
       req_header_data_q <= req_header_data_d;
