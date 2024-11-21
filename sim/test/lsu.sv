@@ -49,21 +49,23 @@ module lsu
   lsu_op_e lsu_op_q, lsu_op_d;
   logic [DATA_W-1:0] load_addr_q, load_addr_d;
 
-  /*
-  // task automatic send_mem_load_req(logic req_val_i, logic [DATA_W-1:0] addr_to_send_i);
-  //   mem_req_val_o = req_val_i;
-  //   mem_req_addr_o = addr_to_send_i;
-  //   mem_req_is_write_o = 0;
-  // endtask
+  task automatic send_mem_load_req(
+      input logic [DATA_W-1:0] addr_to_send_i, output logic mem_req_val_o,
+      output logic [DATA_W-1:0] mem_req_addr_o, output logic mem_req_is_write_o);
+    mem_req_val_o = 1;
+    mem_req_addr_o = addr_to_send_i;
+    mem_req_is_write_o = 0;
+  endtask
 
-  // task automatic send_mem_store_word_req(logic req_val_i, logic [DATA_W-1:0] addr_to_send_i,
-  //                                        logic [DATA_W-1:0] data_to_send_i);
-  //   mem_req_val_o = req_val_i;
-  //   mem_req_addr_o = addr_to_send_i;
-  //   mem_req_data_o = data_to_send_i;
-  //   mem_req_is_write_o = 1;
-  // endtask
-*/
+  task automatic send_mem_store_req(
+      input logic [DATA_W-1:0] addr_to_send_i, input logic [DATA_W-1:0] data_to_send_i,
+      output logic mem_req_val_o, output logic [DATA_W-1:0] mem_req_addr_o,
+      output logic [DATA_W-1:0] mem_req_data_o, output logic mem_req_is_write_o);
+    mem_req_val_o = 1;
+    mem_req_addr_o = addr_to_send_i;
+    mem_req_data_o = data_to_send_i;
+    mem_req_is_write_o = 1;
+  endtask
 
   always_comb begin : lsu_fsm
     state_d = state_q;
@@ -105,12 +107,10 @@ module lsu
         end
       end
       LOAD_KEY: begin
+        send_mem_load_req(.addr_to_send_i(req_header_data_q.header_data.addr),
+                          .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                          .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          // send_mem_load_req(.req_val_i(req_header_data_q.val),
-          //                   .addr_to_send_i(req_header_data_q.header_data.addr));
-          mem_req_val_o = req_header_data_q.val;
-          mem_req_addr_o = req_header_data_q.header_data.addr;
-          mem_req_is_write_o = 0;
           state_d = WAIT_LOAD_KEY;
         end
       end
@@ -139,13 +139,10 @@ module lsu
         end
       end
       LOAD_SIZE: begin
+        send_mem_load_req(.addr_to_send_i(req_header_data_q.header_data.addr),
+                          .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                          .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          // send_mem_load_req(.req_val_i(req_header_data_q.val),
-          //                   .addr_to_send_i(req_header_data_q.header_data.addr));
-          mem_req_val_o = req_header_data_q.val;
-          mem_req_addr_o = req_header_data_q.header_data.addr;
-          // load_addr_d = req_header_data_q.header_data.addr;
-          mem_req_is_write_o = 0;
           state_d = RECV_RSP_ON_SIZE_FROM_MEM_LOAD;
         end
       end
@@ -158,14 +155,12 @@ module lsu
         end
       end
       LOAD_NEXT_ADDR: begin
+        send_mem_load_req(
+            .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET),
+            .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = RECV_RSP_ON_NEXT_ADDR_FROM_MEM_LOAD;
-          // send_mem_load_req(
-          //     .req_val_i(req_header_data_q.val),
-          //     .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET));
-          mem_req_val_o = req_header_data_q.val;
-          mem_req_addr_o = req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET;
-          mem_req_is_write_o = 0;
         end
       end
       RECV_RSP_ON_NEXT_ADDR_FROM_MEM_LOAD: begin
@@ -177,12 +172,12 @@ module lsu
         end
       end
       STORE_UPDATED_SIZE: begin
+        send_mem_store_req(.addr_to_send_i(req_header_data_q.header_data.addr),
+                           .data_to_send_i(req_header_data_q.header_data.size),
+                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                           .mem_req_data_o(mem_req_data_o),
+                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          // send_mem_store_word_req(.req_val_i(req_header_data_q.val),
-          //                         .addr_to_send_i(req_header_data_q.header_data.addr),
-          //                         .data_to_send_i(req_header_data_q.header_data.size));
-          // task automatic send_mem_store_word_req(logic req_val_i, logic [DATA_W-1:0] addr_to_send_i,
-          //                                        logic [DATA_W-1:0] data_to_send_i);
           mem_req_val_o = req_header_data_q.val;
           mem_req_addr_o = req_header_data_q.header_data.addr;
           mem_req_data_o = req_header_data_q.header_data.size;
@@ -203,15 +198,12 @@ module lsu
         end
       end
       STORE_UPDATED_NEXT_ADDR: begin
+        send_mem_store_req(
+            .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET),
+            .data_to_send_i(req_header_data_q.header_data.next_addr), .mem_req_val_o(mem_req_val_o),
+            .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
+            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
-          // send_mem_store_word_req(
-          //     .req_val_i(req_header_data_q.val),
-          //     .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET),
-          //     .data_to_send_i(req_header_data_q.header_data.next_addr));
-          mem_req_val_o = req_header_data_q.val;
-          mem_req_addr_o = req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET;
-          mem_req_data_o = req_header_data_q.header_data.next_addr;
-          mem_req_is_write_o = 1;
           state_d = RECV_RSP_ON_NEXT_ADDR_FROM_MEM_UPDATE;
         end
       end
