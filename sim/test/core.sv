@@ -73,7 +73,6 @@ module core
         prev_header_data_d = '0;
         core_ready_o = 1;
         header_data_from_lsu_d = '0;
-        core_ready_o = 1;
 
         if (req_alloc_valid_i) begin
           size_to_allocate_d = size_to_allocate_i;
@@ -117,7 +116,6 @@ module core
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_INSERT;
-          // core_ready_o = 0;
         end
       end
       REQ_DELETE_HEADER: begin
@@ -126,11 +124,9 @@ module core
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_DELETE;
-          // core_ready_o = 0;
         end
       end
       RELEASE_LOCK: begin
-        core_ready_o = 0;
         send_req_to_lsu(.header_data_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
         state_d   = WAIT_RSP_FROM_LSU;
         core_op_d = CORE_REQ_RELEASE;
@@ -138,23 +134,19 @@ module core
       WAIT_RSP_FROM_LSU: begin
         core_ready_o = 1;
         if (rsp_from_lsu_i.val) begin
-          if (core_op_q == CORE_REQ_ACQUIRE_LOCK) begin
-            curr_header_data_d.addr = 'h10;
-            state_d = REQ_LOAD_HEADER;
-          end
-          if (core_op_q == CORE_REQ_LOAD_HEADER) begin
-            header_data_from_lsu_d = rsp_from_lsu_i.header_data;
-            state_d = CMP_SIZE;
-          end
-          if (core_op_q == CORE_REQ_DELETE) begin
-            state_d = RELEASE_LOCK;
-          end
-          if (core_op_q == CORE_REQ_INSERT) begin
-            state_d = REQ_DELETE_HEADER;
-          end
-          if (core_op_q == CORE_REQ_RELEASE) begin
-            state_d = IDLE;
-          end
+          unique case (core_op_q)
+            CORE_REQ_ACQUIRE_LOCK: begin
+              curr_header_data_d.addr = 'h10;
+              state_d = REQ_LOAD_HEADER;
+            end
+            CORE_REQ_LOAD_HEADER: begin
+              header_data_from_lsu_d = rsp_from_lsu_i.header_data;
+              state_d = CMP_SIZE;
+            end
+            CORE_REQ_DELETE:  state_d = RELEASE_LOCK;
+            CORE_REQ_INSERT:  state_d = REQ_DELETE_HEADER;
+            CORE_REQ_RELEASE: state_d = IDLE;
+          endcase
         end
       end
 

@@ -85,7 +85,7 @@ module lsu
 
     unique case (state_q)
       IDLE: begin
-        lsu_ready_o = 1;
+        lsu_ready_o   = 1;
         mem_rsp_rdy_o = 1;
         if (core_req_header_data_i.val) begin
           req_header_data_d = core_req_header_data_i;
@@ -170,38 +170,41 @@ module lsu
         mem_rsp_rdy_o = 1;
         if (mem_rsp_val_i) begin
           rsp_header_data_d.val = mem_rsp_val_i;
-          if (lsu_op_q == LSU_LOAD_KEY) begin
-            if (mem_rsp_data_i == EMPTY_KEY) begin
-              state_d  = LOCK_DO_CAS;
-              lsu_op_d = LSU_DO_CAS;
-            end else begin
-              state_d = LOAD_KEY;
+
+          unique case (lsu_op_q)
+            LSU_LOAD_KEY: begin
+              if (lsu_op_q == LSU_LOAD_KEY) begin
+                if (mem_rsp_data_i == EMPTY_KEY) begin
+                  state_d  = LOCK_DO_CAS;
+                  lsu_op_d = LSU_DO_CAS;
+                end else begin
+                  state_d = LOAD_KEY;
+                end
+              end
             end
-          end
-          if (lsu_op_q == LSU_DO_CAS) begin
-            if (mem_rsp_data_i == 0) begin
+            LSU_DO_CAS: begin
+              if (mem_rsp_data_i == 0) begin
+                state_d = SEND_RSP_TO_CORE;
+              end else begin
+                state_d  = LOAD_KEY;
+                lsu_op_d = LSU_LOAD_KEY;
+              end
+            end
+            LSU_LOAD_SIZE: begin
+              rsp_header_data_d.header_data.size = mem_rsp_data_i;
+              state_d = LOAD_NEXT_ADDR;
+              lsu_op_d = LSU_LOAD_NEXT_ADDR;
+            end
+            LSU_LOAD_NEXT_ADDR: begin
+              rsp_header_data_d.header_data.next_addr = mem_rsp_data_i;
               state_d = SEND_RSP_TO_CORE;
-            end else begin
-              state_d  = LOAD_KEY;
-              lsu_op_d = LSU_LOAD_KEY;
             end
-          end
-          if (lsu_op_q == LSU_LOAD_SIZE) begin
-            rsp_header_data_d.header_data.size = mem_rsp_data_i;
-            state_d = LOAD_NEXT_ADDR;
-            lsu_op_d = LSU_LOAD_NEXT_ADDR;
-          end
-          if (lsu_op_q == LSU_LOAD_NEXT_ADDR) begin
-            rsp_header_data_d.header_data.next_addr = mem_rsp_data_i;
-            state_d = SEND_RSP_TO_CORE;
-          end
-          if (lsu_op_q == LSU_STORE_SIZE) begin
-            state_d  = STORE_UPDATED_NEXT_ADDR;
-            lsu_op_d = LSU_STORE_NEXT_ADDR;
-          end
-          if (lsu_op_q == LSU_STORE_NEXT_ADDR) begin
-            state_d = SEND_RSP_TO_CORE;
-          end
+            LSU_STORE_SIZE: begin
+              state_d  = STORE_UPDATED_NEXT_ADDR;
+              lsu_op_d = LSU_STORE_NEXT_ADDR;
+            end
+            LSU_STORE_NEXT_ADDR: state_d = SEND_RSP_TO_CORE;
+          endcase
         end
       end
 
