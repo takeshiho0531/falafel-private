@@ -135,8 +135,8 @@ async def test_falafel(dut):
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)
     linked_list.add_node(300, 100, 500)
-    linked_list.add_node(500, 220, 2000)
-    linked_list.add_node(2000, 250, 3000)
+    linked_list.add_node(500, 300, 2000)
+    linked_list.add_node(2000, 500, 3000)
     linked_list.print_list()
 
     await reset_dut(dut, clk)
@@ -237,7 +237,7 @@ async def test_falafel(dut):
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 764
-    assert dut.mem_req_data_o == 20
+    assert dut.mem_req_data_o == 100
     await FallingEdge(clk)
     await grant_lock(dut, clk)
     print("Granted size update")

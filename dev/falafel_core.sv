@@ -101,13 +101,17 @@ module falafel_core
           prev_header_data_d = header_data_from_lsu_q;
           curr_header_data_d.addr = header_data_from_lsu_q.next_addr;
           state_d = REQ_LOAD_HEADER;
-        end else begin  // TODO
-          state_d = REQ_INSERT_NEW_HEADER;
-          header_data_to_insert_d.addr = header_data_from_lsu_q.addr + 64 + size_to_allocate_q;  // TODO
-          header_data_to_insert_d.size = header_data_from_lsu_q.size - size_to_allocate_q;
-          header_data_to_insert_d.next_addr = header_data_from_lsu_q.next_addr;
+        end else begin
           header_data_prev_d.addr = prev_header_data_q.addr;
-          header_data_prev_d.next_addr = header_data_to_insert_d.addr;
+          header_data_prev_d.next_addr = header_data_from_lsu_q.addr + 64 + size_to_allocate_q; // TODO
+          if (header_data_from_lsu_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
+            state_d = REQ_INSERT_NEW_HEADER;
+            header_data_to_insert_d.addr = header_data_from_lsu_q.addr + 64 + size_to_allocate_q;  // TODO
+            header_data_to_insert_d.size = header_data_from_lsu_q.size - size_to_allocate_q;
+            header_data_to_insert_d.next_addr = header_data_from_lsu_q.next_addr;
+          end else begin
+            state_d = REQ_DELETE_HEADER;
+          end
         end
       end
       REQ_INSERT_NEW_HEADER: begin
