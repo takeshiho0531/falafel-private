@@ -81,13 +81,13 @@ module lsu
     mem_req_val_o = 0;
     core_rsp_header_data_o.val = 0;
     load_addr_d = load_addr_q;
+    mem_rsp_rdy_o = 0;
 
     unique case (state_q)
       IDLE: begin
-        lsu_ready_o = 1;  // TODO other states
-        // core_rsp_header_data_o.val = 0;
+        lsu_ready_o = 1;
+        mem_rsp_rdy_o = 1;
         if (core_req_header_data_i.val) begin
-          // lsu_ready_o = 0;
           req_header_data_d = core_req_header_data_i;
           mem_rsp_rdy_o = 0;
 

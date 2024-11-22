@@ -38,33 +38,22 @@ async def monitor_req_from_lsu(dut):
         await ReadOnly()
         if dut.mem_req_val_o.value == 1:
             dut._log.info("mem_req_val_o is now 1")
-            # return {
-            #     "addr": dut.mem_req_addr_o.value,
-            #     "data": dut.mem_req_data_o.value,
-            #     "is_write": dut.mem_req_is_write_o.value,
-            # }
             break
         await Timer(1, units="ns")
 
 
-# @cocotb.coroutine
-# async def monitor_req_from_lsu_for_data(dut, queue):
-#     while True:
-#         await ReadOnly()
-#         if dut.mem_req_val_o.value == 1:
-#             dut._log.info("mem_req_val_o is now 1")
-#             data = {
-#                 "addr": dut.mem_req_addr_o.value,
-#                 "data": dut.mem_req_data_o.value,
-#                 "is_write": dut.mem_req_is_write_o.value,
-#             }
-#             await queue.put(data)
-#             print("data", data)
-#             break
-#         await Timer(1, units="ns")
+@cocotb.coroutine
+async def monitor_allocator_ready(dut):
+    while True:
+        await ReadOnly()
+        if dut.mem_rsp_rdy_o.value == 1:
+            dut._log.info("mem_rsp_rdy_o is now 1")
+            break
+        await Timer(1, units="ns")
 
 
 async def send_req_to_allocate(dut, clk):
+    await FallingEdge(clk)
     dut.req_alloc_valid_i.setimmediatevalue(1)
     dut.size_to_allocate_i.setimmediatevalue(200)
     await FallingEdge(clk)
@@ -91,13 +80,9 @@ class LinkedList:
         self.nodes[addr] = node
 
     def get_node(self, addr):
-        # print("addr", addr)
-        # addr = addr.integer
         if addr in self.nodes:
             node = self.nodes[addr]
             return node.size, node.next_addr
-        # elif addr == 0:
-        #     return self.nodes[16].size, self.nodes[16].next_addr
         else:
             return None, None
 
@@ -110,7 +95,6 @@ class LinkedList:
 
 
 async def send_size_from_mem(dut, clk, addr, linked_list: LinkedList):
-    # await ReadWrite()
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(linked_list.get_node(addr)[0])
     await FallingEdge(clk)
@@ -119,7 +103,6 @@ async def send_size_from_mem(dut, clk, addr, linked_list: LinkedList):
 
 
 async def send_next_addr_from_mem(dut, clk, addr, linked_list: LinkedList):
-    # await ReadWrite()
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(linked_list.get_node(addr)[1])
     await FallingEdge(clk)
@@ -128,17 +111,17 @@ async def send_next_addr_from_mem(dut, clk, addr, linked_list: LinkedList):
 
 
 async def grant_lock(dut, clk):
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
     dut.mem_req_rdy_i.setimmediatevalue(0)
-    # print('dut.mem_req_rdy_i == 0', dut.mem_req_rdy_i == 0)
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(0)
     print("dut.mem_rsp_val_i == 1", dut.mem_rsp_val_i == 1)
     await FallingEdge(clk)
-    await RisingEdge(clk)
     dut.mem_rsp_val_i.setimmediatevalue(0)
     print("dut.mem_rsp_val_i == 0", dut.mem_rsp_val_i == 0)
     dut.mem_req_rdy_i.setimmediatevalue(1)
-    # print('dut.mem_req_rdy_i == 1', dut.mem_req_rdy_i == 1)
 
 
 @cocotb.test()
@@ -146,9 +129,8 @@ async def test_allocator(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
-    # monitor_queue = Queue()
     monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
-    # monitor_task_req_from_lsu_for_data = cocotb.start_soon(monitor_req_from_lsu_for_data(dut, monitor_queue))  # noqa
+    monitor_task_allocator_ready = cocotb.start_soon(monitor_allocator_ready(dut))
 
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)
@@ -158,7 +140,6 @@ async def test_allocator(dut):
     linked_list.print_list()
 
     await reset_dut(dut, clk)
-    # cocotb.start(sim_time_counter(dut, clk))
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
@@ -167,32 +148,27 @@ async def test_allocator(dut):
         await FallingEdge(clk)
 
     # Send request to allocate
+    assert dut.mem_rsp_rdy_o == 1
     await send_req_to_allocate(dut, clk)
     print("Sent request to allocate")
-    await FallingEdge(clk)
-    await RisingEdge(clk)
 
     # Wait for the lock request
     await monitor_task_req_from_lsu
-    await FallingEdge(clk)
     await grant_lock(dut, clk)
     print("Granted lock")
-    await FallingEdge(clk)
-    await RisingEdge(clk)
 
     await monitor_task_req_from_lsu
-    await FallingEdge(clk)
+    await monitor_task_allocator_ready
     await grant_lock(dut, clk)
     print("Granted cas")
-    await FallingEdge(clk)
-    await RisingEdge(clk)
 
     # Wait for the request for the first header
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
-    assert dut.mem_req_addr_o == 16
+    assert dut.mem_req_addr_o == 16, int(dut.mem_req_addr_o)
     await FallingEdge(clk)  # it seems to be necessary
     await send_size_from_mem(dut, clk, addr=16, linked_list=linked_list)  # noqa
     print("Sent size of the first header from mem, size:", linked_list.get_node(16)[0])
@@ -211,6 +187,7 @@ async def test_allocator(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_addr_o == 300
     await FallingEdge(clk)  # it seems to be necessary
@@ -233,6 +210,7 @@ async def test_allocator(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_addr_o == 500
     await FallingEdge(clk)  # it seems to be necessary
@@ -255,6 +233,7 @@ async def test_allocator(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 764
@@ -268,7 +247,8 @@ async def test_allocator(dut):
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
-    # await RisingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
     # assert dut.mem_req_val_o == 1 # TODO
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 772
@@ -279,10 +259,12 @@ async def test_allocator(dut):
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
+    # await RisingEdge(clk)
+    # await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
-    assert dut.mem_req_addr_o == 308
-    assert dut.mem_req_data_o == 764
+    assert dut.mem_req_addr_o == 308, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 764, int(dut.mem_req_data_o)
     await grant_lock(dut, clk)
     print("Granted delete")
     await FallingEdge(clk)
