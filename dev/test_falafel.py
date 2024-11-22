@@ -272,6 +272,7 @@ async def test_falafel(dut):
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
+    assert dut.mem_req_data_o == 0, int(dut.mem_req_data_o)
     await grant_lock(dut, clk)
     print("Granted release lock")  # TODO
     await FallingEdge(clk)

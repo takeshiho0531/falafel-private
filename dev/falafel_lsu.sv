@@ -30,6 +30,7 @@ module falafel_lsu
     IDLE,
     LOAD_KEY,
     LOCK_DO_CAS,
+    UNLOCK_KEY,
     LOAD_SIZE,
     LOAD_NEXT_ADDR,
     STORE_UPDATED_SIZE,
@@ -41,6 +42,7 @@ module falafel_lsu
   typedef enum integer {
     LSU_LOAD_KEY,
     LSU_DO_CAS,
+    LSU_UNLOCK,
     LSU_LOAD_SIZE,
     LSU_LOAD_NEXT_ADDR,
     LSU_STORE_SIZE,
@@ -96,7 +98,10 @@ module falafel_lsu
               state_d  = LOAD_KEY;
               lsu_op_d = LSU_LOAD_KEY;
             end
-            // UNLOCK:
+            UNLOCK: begin
+              state_d  = UNLOCK_KEY;
+              lsu_op_d = LSU_UNLOCK;
+            end
             LOAD: begin
               state_d  = LOAD_SIZE;
               lsu_op_d = LSU_LOAD_SIZE;
@@ -166,6 +171,15 @@ module falafel_lsu
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
+      UNLOCK_KEY: begin
+        send_mem_store_req(.addr_to_send_i('0), .data_to_send_i(EMPTY_KEY),
+                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                           .mem_req_data_o(mem_req_data_o),
+                           .mem_req_is_write_o(mem_req_is_write_o));
+        if (mem_req_rdy_i) begin
+          state_d = WAIT_RSP_FROM_MEM;
+        end
+      end
       WAIT_RSP_FROM_MEM: begin
         mem_rsp_rdy_o = 1;
         if (mem_rsp_val_i) begin
@@ -204,6 +218,7 @@ module falafel_lsu
               lsu_op_d = LSU_STORE_NEXT_ADDR;
             end
             LSU_STORE_NEXT_ADDR: state_d = SEND_RSP_TO_CORE;
+            LSU_UNLOCK: state_d = SEND_RSP_TO_CORE;
           endcase
         end
       end
