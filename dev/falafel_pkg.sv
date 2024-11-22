@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
-`ifndef ALLOCATOR_PKG
-`define ALLOCATOR_PKG
-package allocator_pkg;
+`ifndef FALAFEL_PKG
+`define FALAFEL_PKG
+package falafel_pkg;
 
   typedef enum integer {
     LOCK,

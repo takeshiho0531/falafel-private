@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
-`include "allocator_pkg.sv"
+`include "falafel_pkg.sv"
 
-module allocator
-  import allocator_pkg::*;
+module falafel
+  import falafel_pkg::*;
 (
     input logic clk_i,
     input logic rst_ni,
@@ -29,7 +29,7 @@ module allocator
   logic core_ready;
   logic lsu_ready;
 
-  core core (
+  falafel_core i_core (
       .clk_i,
       .rst_ni,
       .size_to_allocate_i,
@@ -40,7 +40,7 @@ module allocator
       .req_to_lsu_o(core_req_header_data)
   );
 
-  lsu lsu (
+  falafel_lsu i_lsu (
       .clk_i,
       .rst_ni,
       .core_req_header_data_i(core_req_header_data),

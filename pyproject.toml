@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "hw-allocator"
+name = "falafel-env"
 version = "0.1.0"
 description = ""
 authors = ["takeshiho0531 <kawadatakeshiho@gmail.com>"]

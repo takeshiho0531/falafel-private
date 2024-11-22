@@ -1,11 +1,11 @@
 SIM ?= verilator
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += allocator.sv
+VERILOG_SOURCES += falafel.sv
 
-TOPLEVEL = allocator
+TOPLEVEL = falafel
 
-MODULE = test_allocator
+MODULE = test_falafel
 
 EXTRA_ARGS += --trace-fst --trace-structs
 

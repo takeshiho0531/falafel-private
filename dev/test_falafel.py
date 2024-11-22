@@ -43,7 +43,7 @@ async def monitor_req_from_lsu(dut):
 
 
 @cocotb.coroutine
-async def monitor_allocator_ready(dut):
+async def monitor_falafel_ready(dut):
     while True:
         await ReadOnly()
         if dut.mem_rsp_rdy_o.value == 1:
@@ -125,12 +125,12 @@ async def grant_lock(dut, clk):
 
 
 @cocotb.test()
-async def test_allocator(dut):
+async def test_falafel(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
     monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
-    monitor_task_allocator_ready = cocotb.start_soon(monitor_allocator_ready(dut))
+    monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
 
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)
@@ -158,7 +158,7 @@ async def test_allocator(dut):
     print("Granted lock")
 
     await monitor_task_req_from_lsu
-    await monitor_task_allocator_ready
+    await monitor_task_falafel_ready
     await grant_lock(dut, clk)
     print("Granted cas")
 

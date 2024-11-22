@@ -1,7 +1,7 @@
-`include "allocator_pkg.sv"
+`include "falafel_pkg.sv"
 
 module core_wrapper
-  import allocator_pkg::*;
+  import falafel_pkg::*;
 (
     input logic clk_i,
     input logic rst_ni,
