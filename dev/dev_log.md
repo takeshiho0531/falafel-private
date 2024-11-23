@@ -1,0 +1,4 @@
+# dev log
+- Nov 21:  moved the contents of the dev-core branch of [hw-allocator](https://github.com/takeshiho0531/hw-allocator) to the v2-dev branch of [falafel-private](https://github.com/takeshiho0531/falafel-private) 🙌
+- Nov 22:  <br>the first-fit allocator in falafel v2 passed the simple malloc test at commit [8305eb2a7a5b417a713e5f56754c76eb9fdf5a59](https://github.com/jfarresg/falafel-private/tree/8305eb2a7a5b417a713e5f56754c76eb9fdf5a59) <br>
+the best-fit allocator in falafel v2 passed the simple malloc test at commit [afb19ab7a4f71eb5533b0bd1b2315c628715af37](https://github.com/jfarresg/falafel-private/tree/afb19ab7a4f71eb5533b0bd1b2315c628715af37)
