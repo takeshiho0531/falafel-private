@@ -16,9 +16,7 @@ module falafel_core
   typedef enum integer {
     IDLE,
     REQ_ACQUIRE_LOCK,
-    RELEASE_LOCK,
-    REQ_FIRST_HEADER,
-    LOAD_FIRST_HEADER,
+    REQ_RELEASE_LOCK,
     REQ_LOAD_HEADER,
     CMP_SIZE,
     REQ_INSERT_NEW_HEADER,
@@ -186,7 +184,7 @@ module falafel_core
           core_op_d = CORE_REQ_DELETE;
         end
       end
-      RELEASE_LOCK: begin
+      REQ_RELEASE_LOCK: begin
         send_req_to_lsu(.header_data_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
         state_d   = WAIT_RSP_FROM_LSU;
         core_op_d = CORE_REQ_RELEASE;
@@ -203,7 +201,7 @@ module falafel_core
               header_data_from_lsu_d = rsp_from_lsu_i.header_data;
               state_d = CMP_SIZE;
             end
-            CORE_REQ_DELETE:  state_d = RELEASE_LOCK;
+            CORE_REQ_DELETE:  state_d = REQ_RELEASE_LOCK;
             CORE_REQ_INSERT:  state_d = REQ_DELETE_HEADER;
             CORE_REQ_RELEASE: state_d = IDLE;
           endcase

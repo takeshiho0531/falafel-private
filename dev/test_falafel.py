@@ -1,7 +1,6 @@
 import cocotb
-from cocotb.triggers import FallingEdge, ReadOnly, Timer, RisingEdge, ReadWrite
+from cocotb.triggers import FallingEdge, ReadOnly, Timer, RisingEdge
 from cocotb.clock import Clock
-from cocotb.queue import Queue
 
 CLK_PERIOD = 10
 MAX_SIM_TIME = 15000
