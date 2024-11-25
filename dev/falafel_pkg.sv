@@ -8,7 +8,7 @@ package falafel_pkg;
     LOCK,
     UNLOCK,
     LOAD,
-    SET_INSERT_ADDR,
+    UPDATE,
     INSERT,
     DELETE
   } req_lsu_op_e;

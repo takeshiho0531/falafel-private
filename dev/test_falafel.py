@@ -253,10 +253,34 @@ async def test_falafel(dut):
 
     linked_list.print_list()
 
-    # Wait for insert req
+    # Wait for update req
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_val_o == 1
+    assert dut.mem_req_is_write_o == 1
+    assert dut.mem_req_addr_o == 2000, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 200
+    await FallingEdge(clk)
+    await grant_lock(dut, clk)
+    print("Granted size update")
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 # TODO
+    assert dut.mem_req_is_write_o == 1
+    assert dut.mem_req_addr_o == 2008, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 0
+    await grant_lock(dut, clk)
+    print("Granted next addr update")
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # Wait for insert req
+    await monitor_task_req_from_lsu
     await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
@@ -271,8 +295,6 @@ async def test_falafel(dut):
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
-    await RisingEdge(clk)
-    await FallingEdge(clk)
     # assert dut.mem_req_val_o == 1 # TODO
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 2272, int(dut.mem_req_addr_o)
@@ -283,8 +305,6 @@ async def test_falafel(dut):
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
-    # await RisingEdge(clk)
-    # await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 508, int(dut.mem_req_addr_o)

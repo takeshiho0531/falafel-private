@@ -106,6 +106,10 @@ module falafel_lsu
               state_d  = LOAD_SIZE;
               lsu_op_d = LSU_LOAD_SIZE;
             end
+            UPDATE: begin
+              state_d  = STORE_UPDATED_SIZE;
+              lsu_op_d = LSU_STORE_SIZE;
+            end
             INSERT: begin
               state_d  = STORE_UPDATED_SIZE;
               lsu_op_d = LSU_STORE_SIZE;
