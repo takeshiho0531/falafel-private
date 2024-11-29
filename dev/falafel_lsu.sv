@@ -110,9 +110,13 @@ module falafel_lsu
               state_d  = STORE_UPDATED_SIZE;
               lsu_op_d = LSU_STORE_SIZE;
             end
-            INSERT: begin
+            ALLOC_INSERT: begin
               state_d  = STORE_UPDATED_SIZE;
               lsu_op_d = LSU_STORE_SIZE;
+            end
+            FREE_INSERT: begin
+              state_d  = STORE_UPDATED_NEXT_ADDR;
+              lsu_op_d = LSU_STORE_NEXT_ADDR;
             end
             DELETE: begin
               state_d  = STORE_UPDATED_NEXT_ADDR;

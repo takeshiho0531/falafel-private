@@ -9,7 +9,8 @@ package falafel_pkg;
     UNLOCK,
     LOAD,
     UPDATE,
-    INSERT,
+    ALLOC_INSERT,
+    FREE_INSERT,
     DELETE
   } req_lsu_op_e;
 

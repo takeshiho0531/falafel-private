@@ -6,6 +6,8 @@ module falafel
 (
     input logic clk_i,
     input logic rst_ni,
+    input logic is_alloc_i,
+    input logic [DATA_W-1:0] addr_to_free_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
     input logic req_alloc_valid_i,
 
@@ -19,8 +21,8 @@ module falafel
     // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
-    input  logic              mem_rsp_val_i,       // resp valid
-    output logic              mem_rsp_rdy_o,       // falafel ready
+    input  logic              mem_rsp_val_i,  // resp valid
+    output logic              mem_rsp_rdy_o,  // falafel ready
     input  logic [DATA_W-1:0] mem_rsp_data_i
 );
 
@@ -32,6 +34,8 @@ module falafel
   falafel_core i_core (
       .clk_i,
       .rst_ni,
+      .is_alloc_i,
+      .addr_to_free_i,
       .size_to_allocate_i,
       .req_alloc_valid_i,
       .core_ready_o(core_ready),
@@ -52,7 +56,7 @@ module falafel
       .mem_req_val_o,  // req valid
       .mem_req_rdy_i,  // mem ready
       .mem_req_is_write_o,  // 1 for write, 0 for read
-      .mem_req_is_cas_o,    // 1 for cas, 0 for write
+      .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
       // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
