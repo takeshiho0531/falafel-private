@@ -2,4 +2,5 @@
 - Nov 21:  moved the contents of the dev-core branch of [hw-allocator](https://github.com/takeshiho0531/hw-allocator) to the v2-dev branch of [falafel-private](https://github.com/takeshiho0531/falafel-private) 🙌
 - Nov 22:  <br>the first-fit allocator in falafel v2 passed the simple malloc test at commit [8305eb2a7a5b417a713e5f56754c76eb9fdf5a59](https://github.com/jfarresg/falafel-private/tree/8305eb2a7a5b417a713e5f56754c76eb9fdf5a59) <br>
 the best-fit allocator in falafel v2 passed the simple malloc test at commit [afb19ab7a4f71eb5533b0bd1b2315c628715af37](https://github.com/jfarresg/falafel-private/tree/afb19ab7a4f71eb5533b0bd1b2315c628715af37)
-- Nov 28: implement a simple free logicat commit [f20cd65041cb26238f44287c8eb97e2ed6dab910](https://github.com/jfarresg/falafel-private/tree/f20cd65041cb26238f44287c8eb97e2ed6dab910)
+- Nov 28: implement a simple free logic at commit [f20cd65041cb26238f44287c8eb97e2ed6dab910](https://github.com/jfarresg/falafel-private/tree/f20cd65041cb26238f44287c8eb97e2ed6dab910)
+- Nov 29: implement a feature to merge blocks when freeing, if the block is next to the one on the right at commit [15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0](https://github.com/jfarresg/falafel-private/tree/15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0)
