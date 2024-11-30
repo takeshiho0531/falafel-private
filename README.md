@@ -7,7 +7,7 @@ this allocator supports the first-fit and the best-fit algorithm
 
 ## Related Documents
 - the devlopment log →　[dev_log.md](dev/dev_log.md)
-- the documents → [doc.md](doc/doc.md)
+- the documents → [readme.md](doc/README.md)
 
 ## Setting up
 Falafel v2 uses [Verilator](https://verilator.org/guide/latest/#) for simulation and [Poetry](https://python-poetry.org/) to manage library version dependencies for running its testbench (we use Cocotb for running the simulation). <br>
