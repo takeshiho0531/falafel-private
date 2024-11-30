@@ -6,8 +6,8 @@ module falafel_lsu
     input logic clk_i,
     input logic rst_ni,
 
-    input header_data_req_t core_req_header_data_i,
-    output header_data_rsp_t core_rsp_header_data_o,
+    input header_req_t core_req_header_i,
+    output header_rsp_t core_rsp_header_o,
     input logic core_rdy_i,
     output logic lsu_ready_o,
 
@@ -50,8 +50,8 @@ module falafel_lsu
   } lsu_op_e;
 
   lsu_state_e state_q, state_d;
-  header_data_req_t req_header_data_q, req_header_data_d;
-  header_data_rsp_t rsp_header_data_q, rsp_header_data_d;
+  header_req_t req_header_q, req_header_d;
+  header_rsp_t rsp_header_q, rsp_header_d;
   lsu_op_e lsu_op_q, lsu_op_d;
   logic [DATA_W-1:0] load_addr_q, load_addr_d;
 
@@ -75,13 +75,13 @@ module falafel_lsu
 
   always_comb begin : lsu_fsm
     state_d = state_q;
-    req_header_data_d = req_header_data_q;
-    rsp_header_data_d = rsp_header_data_q;
+    req_header_d = req_header_q;
+    rsp_header_d = rsp_header_q;
     lsu_op_d = lsu_op_q;
     lsu_ready_o = 0;
     mem_req_is_cas_o = 0;
     mem_req_val_o = 0;
-    core_rsp_header_data_o.val = 0;
+    core_rsp_header_o.val = 0;
     load_addr_d = load_addr_q;
     mem_rsp_rdy_o = 0;
 
@@ -89,11 +89,11 @@ module falafel_lsu
       IDLE: begin
         lsu_ready_o   = 1;
         mem_rsp_rdy_o = 1;
-        if (core_req_header_data_i.val) begin
-          req_header_data_d = core_req_header_data_i;
+        if (core_req_header_i.val) begin
+          req_header_d = core_req_header_i;
           mem_rsp_rdy_o = 0;
 
-          unique case (core_req_header_data_i.lsu_op)
+          unique case (core_req_header_i.lsu_op)
             LOCK: begin
               state_d  = LOAD_KEY;
               lsu_op_d = LSU_LOAD_KEY;
@@ -127,7 +127,7 @@ module falafel_lsu
         end
       end
       LOAD_KEY: begin
-        send_mem_load_req(.addr_to_send_i(req_header_data_q.header_data.addr),
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -143,7 +143,7 @@ module falafel_lsu
         end
       end
       LOAD_SIZE: begin
-        send_mem_load_req(.addr_to_send_i(req_header_data_q.header_data.addr),
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -152,7 +152,7 @@ module falafel_lsu
       end
       LOAD_NEXT_ADDR: begin
         send_mem_load_req(
-            .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET),
+            .addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
             .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
             .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -160,8 +160,8 @@ module falafel_lsu
         end
       end
       STORE_UPDATED_SIZE: begin
-        send_mem_store_req(.addr_to_send_i(req_header_data_q.header_data.addr),
-                           .data_to_send_i(req_header_data_q.header_data.size),
+        send_mem_store_req(.addr_to_send_i(req_header_q.header.addr),
+                           .data_to_send_i(req_header_q.header.size),
                            .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                            .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
@@ -171,8 +171,8 @@ module falafel_lsu
       end
       STORE_UPDATED_NEXT_ADDR: begin
         send_mem_store_req(
-            .addr_to_send_i(req_header_data_q.header_data.addr + BLOCK_NEXT_ADDR_OFFSET),
-            .data_to_send_i(req_header_data_q.header_data.next_addr), .mem_req_val_o(mem_req_val_o),
+            .addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
+            .data_to_send_i(req_header_q.header.next_addr), .mem_req_val_o(mem_req_val_o),
             .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
             .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -191,7 +191,7 @@ module falafel_lsu
       WAIT_RSP_FROM_MEM: begin
         mem_rsp_rdy_o = 1;
         if (mem_rsp_val_i) begin
-          rsp_header_data_d.val = mem_rsp_val_i;
+          rsp_header_d.val = mem_rsp_val_i;
 
           unique case (lsu_op_q)
             LSU_LOAD_KEY: begin
@@ -213,12 +213,12 @@ module falafel_lsu
               end
             end
             LSU_LOAD_SIZE: begin
-              rsp_header_data_d.header_data.size = mem_rsp_data_i;
+              rsp_header_d.header.size = mem_rsp_data_i;
               state_d = LOAD_NEXT_ADDR;
               lsu_op_d = LSU_LOAD_NEXT_ADDR;
             end
             LSU_LOAD_NEXT_ADDR: begin
-              rsp_header_data_d.header_data.next_addr = mem_rsp_data_i;
+              rsp_header_d.header.next_addr = mem_rsp_data_i;
               state_d = SEND_RSP_TO_CORE;
             end
             LSU_STORE_SIZE: begin
@@ -232,9 +232,9 @@ module falafel_lsu
       end
 
       SEND_RSP_TO_CORE: begin
-        core_rsp_header_data_o = rsp_header_data_q;
-        core_rsp_header_data_o.header_data.addr = req_header_data_q.header_data.addr;
-        core_rsp_header_data_o.val = 1;
+        core_rsp_header_o = rsp_header_q;
+        core_rsp_header_o.header.addr = req_header_q.header.addr;
+        core_rsp_header_o.val = 1;
         if (core_rdy_i) begin
           lsu_ready_o = 1;
           state_d = IDLE;
@@ -247,13 +247,13 @@ module falafel_lsu
   always_ff @(posedge clk_i) begin
     if (!rst_ni) begin
       state_q <= IDLE;
-      req_header_data_q <= '0;
-      rsp_header_data_q <= '0;
+      req_header_q <= '0;
+      rsp_header_q <= '0;
       lsu_op_q <= LSU_LOAD_KEY;
     end else begin
       state_q <= state_d;
-      req_header_data_q <= req_header_data_d;
-      rsp_header_data_q <= rsp_header_data_d;
+      req_header_q <= req_header_d;
+      rsp_header_q <= rsp_header_d;
       lsu_op_q <= lsu_op_d;
     end
   end

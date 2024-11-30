@@ -22,8 +22,8 @@ module core_wrapper
     input [DATA_W-1:0] metadata_rsp_next_addr_i
 );
 
-  header_data_req_t metadata_req;
-  header_data_rsp_t metadata_rsp;
+  header_req_t metadata_req;
+  header_rsp_t metadata_rsp;
 
   assign metadata_req_val_o = metadata_req.val;
   assign metadata_req_size_o = metadata_req.header_data.size;

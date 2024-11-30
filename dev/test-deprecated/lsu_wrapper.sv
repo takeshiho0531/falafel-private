@@ -30,8 +30,8 @@ module lsu_wrapper
     input  logic [DATA_W-1:0] mem_rsp_data_i
 );
 
-  header_data_req_t req_metadata;
-  header_data_rsp_t rsp_metadata;
+  header_req_t req_metadata;
+  header_rsp_t rsp_metadata;
 
   assign req_metadata.val = req_metadata_val_i;
   assign req_metadata.lsu_op = req_metadata_which_req_i;

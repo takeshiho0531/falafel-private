@@ -26,8 +26,8 @@ module falafel
     input  logic [DATA_W-1:0] mem_rsp_data_i
 );
 
-  header_data_req_t core_req_header_data;
-  header_data_rsp_t core_rsp_header_data;
+  header_req_t core_req_header;
+  header_rsp_t core_rsp_header;
   logic core_ready;
   logic lsu_ready;
 
@@ -40,15 +40,15 @@ module falafel
       .req_alloc_valid_i,
       .core_ready_o(core_ready),
       .lsu_ready_i(lsu_ready),
-      .rsp_from_lsu_i(core_rsp_header_data),
-      .req_to_lsu_o(core_req_header_data)
+      .rsp_from_lsu_i(core_rsp_header),
+      .req_to_lsu_o(core_req_header)
   );
 
   falafel_lsu i_lsu (
       .clk_i,
       .rst_ni,
-      .core_req_header_data_i(core_req_header_data),
-      .core_rsp_header_data_o(core_rsp_header_data),
+      .core_req_header_i(core_req_header),
+      .core_rsp_header_o(core_rsp_header),
       .core_rdy_i(core_ready),
       .lsu_ready_o(lsu_ready),
 

@@ -11,8 +11,8 @@ module falafel_core
     input logic req_alloc_valid_i,
     output logic core_ready_o,
     input logic lsu_ready_i,
-    input header_data_rsp_t rsp_from_lsu_i,
-    output header_data_req_t req_to_lsu_o
+    input header_rsp_t rsp_from_lsu_i,
+    output header_req_t req_to_lsu_o
 );
 
   typedef enum integer {
@@ -53,26 +53,26 @@ module falafel_core
   logic [DATA_W-1:0] size_to_allocate_d, size_to_allocate_q;
   logic [DATA_W-1:0] addr_to_free_d, addr_to_free_q;
 
-  header_data_t header_data_from_lsu_d, header_data_from_lsu_q;
-  header_data_t prev_header_data_d, prev_header_data_q;
-  header_data_t curr_header_data_d, curr_header_data_q;
-  header_data_t header_data_to_update_d, header_data_to_update_q;
-  header_data_t header_data_to_insert_d, header_data_to_insert_q;
-  header_data_t header_data_prev_d, header_data_prev_q;
-  header_data_t best_fit_header_data_d, best_fit_header_data_q;
-  header_data_t best_fit_header_prev_data_d, best_fit_header_prev_data_q;
+  header_t header_from_lsu_d, header_from_lsu_q;
+  header_t prev_header_d, prev_header_q;
+  header_t curr_header_d, curr_header_q;
+  header_t header_to_update_d, header_to_update_q;
+  header_t header_to_insert_d, header_to_insert_q;
+  header_t header_prev_d, header_prev_q;
+  header_t best_fit_header_d, best_fit_header_q;
+  header_t best_fit_header_prev_d, best_fit_header_prev_q;
   logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
-  header_data_t fill_header_req;
-  header_data_t fill_header_d, fill_header_q;
-  header_data_t right_header_req;
-  header_data_t right_header_d, right_header_q;
+  header_t fill_header_req;
+  header_t fill_header_d, fill_header_q;
+  header_t right_header_req;
+  header_t right_header_d, right_header_q;
   logic does_merge_with_right, does_merge_with_left;
-  header_data_t merged_header;
-  header_data_t header_in_used_in_delete;
+  header_t merged_header;
+  header_t header_in_used_in_delete;
 
-  task automatic send_req_to_lsu(input header_data_t header_data_i, input req_lsu_op_e lsu_op_i,
-                                 output header_data_req_t req_to_lsu_o);
-    req_to_lsu_o.header_data = header_data_i;
+  task automatic send_req_to_lsu(input header_t header_i, input req_lsu_op_e lsu_op_i,
+                                 output header_req_t req_to_lsu_o);
+    req_to_lsu_o.header = header_i;
     req_to_lsu_o.lsu_op = lsu_op_i;
     req_to_lsu_o.val = 1;
   endtask
@@ -83,16 +83,16 @@ module falafel_core
     addr_to_free_d = addr_to_free_q;
 
     req_to_lsu_o = '0;
-    header_data_to_update_d = header_data_to_update_q;
-    header_data_to_insert_d = header_data_to_insert_q;
-    header_data_prev_d = header_data_prev_q;
-    curr_header_data_d = curr_header_data_q;
-    prev_header_data_d = prev_header_data_q;
+    header_to_update_d = header_to_update_q;
+    header_to_insert_d = header_to_insert_q;
+    header_prev_d = header_prev_q;
+    curr_header_d = curr_header_q;
+    prev_header_d = prev_header_q;
     core_ready_o = 0;
     core_op_d = core_op_q;
-    header_data_from_lsu_d = header_data_from_lsu_q;
-    best_fit_header_data_d = best_fit_header_data_q;
-    best_fit_header_prev_data_d = best_fit_header_prev_data_q;
+    header_from_lsu_d = header_from_lsu_q;
+    best_fit_header_d = best_fit_header_q;
+    best_fit_header_prev_d = best_fit_header_prev_q;
     smallest_diff_d = smallest_diff_q;
     fill_header_req = '0;
     fill_header_d = fill_header_q;
@@ -109,15 +109,15 @@ module falafel_core
         size_to_allocate_d = '0;
         addr_to_free_d = '0;
         req_to_lsu_o = '0;
-        header_data_to_update_d = '0;
-        header_data_to_insert_d = '0;
-        header_data_prev_d = '0;
-        curr_header_data_d = '0;
-        prev_header_data_d = '0;
+        header_to_update_d = '0;
+        header_to_insert_d = '0;
+        header_prev_d = '0;
+        curr_header_d = '0;
+        prev_header_d = '0;
         core_ready_o = 1;
-        header_data_from_lsu_d = '0;
-        best_fit_header_data_d = '0;
-        best_fit_header_prev_data_d = '0;
+        header_from_lsu_d = '0;
+        best_fit_header_d = '0;
+        best_fit_header_prev_d = '0;
         smallest_diff_d = {DATA_W{1'b1}};
         fill_header_d = '0;
         right_header_d = '0;
@@ -131,14 +131,14 @@ module falafel_core
         end
       end
       REQ_ACQUIRE_LOCK: begin
-        send_req_to_lsu(.header_data_i('0), .lsu_op_i(LOCK), .req_to_lsu_o(req_to_lsu_o));
+        send_req_to_lsu(.header_i('0), .lsu_op_i(LOCK), .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
           core_op_d = CORE_REQ_ACQUIRE_LOCK;
           state_d   = WAIT_RSP_FROM_LSU;
         end
       end
       REQ_LOAD_HEADER: begin
-        send_req_to_lsu(.header_data_i(curr_header_data_q), .lsu_op_i(LOAD),
+        send_req_to_lsu(.header_i(curr_header_q), .lsu_op_i(LOAD),
                         .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
           core_op_d = CORE_REQ_LOAD_HEADER;
@@ -148,20 +148,20 @@ module falafel_core
       /*
       CMP_SIZE: begin
         core_ready_o = 1;
-        if (header_data_from_lsu_q.size < size_to_allocate_q) begin
-          prev_header_data_d = header_data_from_lsu_q;
-          curr_header_data_d.addr = header_data_from_lsu_q.next_addr;
+        if (header_from_lsu_q.size < size_to_allocate_q) begin
+          prev_header_d = header_from_lsu_q;
+          curr_header_d.addr = header_from_lsu_q.next_addr;
           state_d = REQ_LOAD_HEADER;
         end else begin
-          header_data_prev_d.addr = prev_header_data_q.addr;
-          if (header_data_from_lsu_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
+          header_prev_d.addr = prev_header_q.addr;
+          if (header_from_lsu_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
             state_d = REQ_INSERT_NEW_HEADER;
-            header_data_to_insert_d.addr = header_data_from_lsu_q.addr + 64 + size_to_allocate_q;  // TODO
-            header_data_to_insert_d.size = header_data_from_lsu_q.size - size_to_allocate_q;
-            header_data_to_insert_d.next_addr = header_data_from_lsu_q.next_addr;
-            header_data_prev_d.next_addr = header_data_to_insert_d.addr;
+            header_to_insert_d.addr = header_from_lsu_q.addr + 64 + size_to_allocate_q;  // TODO
+            header_to_insert_d.size = header_from_lsu_q.size - size_to_allocate_q;
+            header_to_insert_d.next_addr = header_from_lsu_q.next_addr;
+            header_prev_d.next_addr = header_to_insert_d.addr;
           end else begin
-            header_data_prev_d.next_addr = header_data_from_lsu_q.next_addr;
+            header_prev_d.next_addr = header_from_lsu_q.next_addr;
             state_d = REQ_DELETE_HEADER;
           end
         end
@@ -169,48 +169,48 @@ module falafel_core
       */
       ALLOC_CMP_SIZE: begin
         core_ready_o = 1;
-        if ((header_data_from_lsu_q.size >= size_to_allocate_q) &&
-      ((header_data_from_lsu_q.size - size_to_allocate_q) < smallest_diff_q)) begin
-          best_fit_header_data_d = header_data_from_lsu_q;
-          best_fit_header_prev_data_d = prev_header_data_q;
-          smallest_diff_d = header_data_from_lsu_q.size - size_to_allocate_q;
+        if ((header_from_lsu_q.size >= size_to_allocate_q) &&
+      ((header_from_lsu_q.size - size_to_allocate_q) < smallest_diff_q)) begin
+          best_fit_header_d = header_from_lsu_q;
+          best_fit_header_prev_d = prev_header_q;
+          smallest_diff_d = header_from_lsu_q.size - size_to_allocate_q;
         end
 
-        if (header_data_from_lsu_q.next_addr != '0) begin
-          prev_header_data_d = header_data_from_lsu_q;
-          curr_header_data_d.addr = header_data_from_lsu_q.next_addr;
+        if (header_from_lsu_q.next_addr != '0) begin
+          prev_header_d = header_from_lsu_q;
+          curr_header_d.addr = header_from_lsu_q.next_addr;
           state_d = REQ_LOAD_HEADER;
         end else begin
-          if (best_fit_header_data_d.next_addr != '0) begin
-            header_data_prev_d.addr = best_fit_header_prev_data_q.addr;
-            if (best_fit_header_data_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
+          if (best_fit_header_d.next_addr != '0) begin
+            header_prev_d.addr = best_fit_header_prev_q.addr;
+            if (best_fit_header_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
               state_d = REQ_ALLOC_UPDATE_OLD_HEADER;
-              header_data_to_update_d.addr = best_fit_header_data_q.addr;
-              header_data_to_update_d.size = size_to_allocate_q;  // TODO
-              header_data_to_update_d.next_addr = '0;
-              header_data_to_insert_d.addr = best_fit_header_data_q.addr + 64 + size_to_allocate_q;  // TODO
-              header_data_to_insert_d.size = best_fit_header_data_q.size - size_to_allocate_q;
-              header_data_to_insert_d.next_addr = best_fit_header_data_q.next_addr;
-              header_data_prev_d.next_addr = header_data_to_insert_d.addr;
+              header_to_update_d.addr = best_fit_header_q.addr;
+              header_to_update_d.size = size_to_allocate_q;  // TODO
+              header_to_update_d.next_addr = '0;
+              header_to_insert_d.addr = best_fit_header_q.addr + 64 + size_to_allocate_q;  // TODO
+              header_to_insert_d.size = best_fit_header_q.size - size_to_allocate_q;
+              header_to_insert_d.next_addr = best_fit_header_q.next_addr;
+              header_prev_d.next_addr = header_to_insert_d.addr;
             end else begin
-              header_data_to_update_d.next_addr = '0;
-              header_data_prev_d.next_addr = best_fit_header_data_q.next_addr;
+              header_to_update_d.next_addr = '0;
+              header_prev_d.next_addr = best_fit_header_q.next_addr;
               state_d = REQ_DELETE_HEADER;
             end
           end else begin
-            header_data_prev_d.addr = best_fit_header_prev_data_d.addr;
-            if (best_fit_header_data_d.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
+            header_prev_d.addr = best_fit_header_prev_d.addr;
+            if (best_fit_header_d.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
               state_d = REQ_ALLOC_UPDATE_OLD_HEADER;
-              header_data_to_update_d.addr = best_fit_header_data_d.addr;
-              header_data_to_update_d.size = size_to_allocate_q;  // TODO
-              header_data_to_update_d.next_addr = '0;
-              header_data_to_insert_d.addr = best_fit_header_data_d.addr + 64 + size_to_allocate_q;  // TODO
-              header_data_to_insert_d.size = best_fit_header_data_d.size - size_to_allocate_q;
-              header_data_to_insert_d.next_addr = best_fit_header_data_d.next_addr;
-              header_data_prev_d.next_addr = header_data_to_insert_d.addr;
+              header_to_update_d.addr = best_fit_header_d.addr;
+              header_to_update_d.size = size_to_allocate_q;  // TODO
+              header_to_update_d.next_addr = '0;
+              header_to_insert_d.addr = best_fit_header_d.addr + 64 + size_to_allocate_q;  // TODO
+              header_to_insert_d.size = best_fit_header_d.size - size_to_allocate_q;
+              header_to_insert_d.next_addr = best_fit_header_d.next_addr;
+              header_prev_d.next_addr = header_to_insert_d.addr;
             end else begin
-              header_data_to_update_d.next_addr = '0;
-              header_data_prev_d.next_addr = best_fit_header_data_d.next_addr;
+              header_to_update_d.next_addr = '0;
+              header_prev_d.next_addr = best_fit_header_d.next_addr;
               state_d = REQ_DELETE_HEADER;
             end
           end
@@ -218,7 +218,7 @@ module falafel_core
       end
       REQ_ALLOC_UPDATE_OLD_HEADER: begin
         if (lsu_ready_i) begin
-          send_req_to_lsu(.header_data_i(header_data_to_update_q), .lsu_op_i(UPDATE),
+          send_req_to_lsu(.header_i(header_to_update_q), .lsu_op_i(UPDATE),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_UPDATE;
@@ -226,7 +226,7 @@ module falafel_core
       end
       REQ_ALLOC_INSERT_NEW_HEADER: begin
         if (lsu_ready_i) begin
-          send_req_to_lsu(.header_data_i(header_data_to_insert_q), .lsu_op_i(ALLOC_INSERT),
+          send_req_to_lsu(.header_i(header_to_insert_q), .lsu_op_i(ALLOC_INSERT),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_INSERT;
@@ -234,29 +234,29 @@ module falafel_core
       end
       REQ_DELETE_HEADER: begin
         if (lsu_ready_i) begin
-          send_req_to_lsu(.header_data_i(header_data_prev_q), .lsu_op_i(DELETE),
+          send_req_to_lsu(.header_i(header_prev_q), .lsu_op_i(DELETE),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_DELETE;
         end
       end
       FREE_SEARCH_POS: begin
-        // if ((addr_to_free_q > header_data_from_lsu_q.addr) &&
-        // ((addr_to_free_q < header_data_from_lsu_q.next_addr) |
-        // (header_data_from_lsu_q.next_addr == '0))) begin
-        if ((addr_to_free_q > header_data_from_lsu_q.addr) &&
-        (addr_to_free_q < header_data_from_lsu_q.next_addr)) begin
-          curr_header_data_d = header_data_from_lsu_q;
+        // if ((addr_to_free_q > header_from_lsu_q.addr) &&
+        // ((addr_to_free_q < header_from_lsu_q.next_addr) |
+        // (header_from_lsu_q.next_addr == '0))) begin
+        if ((addr_to_free_q > header_from_lsu_q.addr) &&
+        (addr_to_free_q < header_from_lsu_q.next_addr)) begin
+          curr_header_d = header_from_lsu_q;
           state_d = FREE_REQ_LOAD_TO_FILL_HEADER;
 
         end else begin
-          curr_header_data_d.addr = header_data_from_lsu_q.next_addr;
+          curr_header_d.addr = header_from_lsu_q.next_addr;
           state_d = REQ_LOAD_HEADER;
         end
       end
       FREE_REQ_LOAD_TO_FILL_HEADER: begin
         fill_header_req.addr = addr_to_free_q;
-        send_req_to_lsu(.header_data_i(fill_header_req), .lsu_op_i(LOAD),
+        send_req_to_lsu(.header_i(fill_header_req), .lsu_op_i(LOAD),
                         .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
           core_op_d = CORE_REQ_LOAD_FILL_HEADER;
@@ -264,27 +264,27 @@ module falafel_core
         end
       end
       FREE_JUDGE_MERGE: begin
-        fill_header_d = header_data_from_lsu_q;
+        fill_header_d = header_from_lsu_q;
         if (addr_to_free_q + BLOCK_HEADER_SIZE + fill_header_d.size
-        == curr_header_data_q.next_addr) begin
+        == curr_header_q.next_addr) begin
           does_merge_with_right = 1;
           state_d = FREE_REQ_LOAD_RIGHT;
         end
-        if (curr_header_data_q.addr + BLOCK_HEADER_SIZE + curr_header_data_q.size
+        if (curr_header_q.addr + BLOCK_HEADER_SIZE + curr_header_q.size
         == addr_to_free_q) begin
           does_merge_with_left = 1;
         end
         if (!does_merge_with_left && !does_merge_with_right) begin
-          header_data_to_insert_d.addr = addr_to_free_q;
-          header_data_to_insert_d.next_addr = header_data_from_lsu_q.next_addr;
-          header_data_prev_d.addr = header_data_from_lsu_q.addr;
-          header_data_prev_d.next_addr = header_data_to_insert_d.addr;
+          header_to_insert_d.addr = addr_to_free_q;
+          header_to_insert_d.next_addr = header_from_lsu_q.next_addr;
+          header_prev_d.addr = header_from_lsu_q.addr;
+          header_prev_d.next_addr = header_to_insert_d.addr;
           state_d = REQ_FREE_INSERT_HEADER;
         end
       end
       FREE_REQ_LOAD_RIGHT: begin
-        right_header_req.addr = curr_header_data_q.next_addr;
-        send_req_to_lsu(.header_data_i(right_header_req), .lsu_op_i(LOAD),
+        right_header_req.addr = curr_header_q.next_addr;
+        send_req_to_lsu(.header_i(right_header_req), .lsu_op_i(LOAD),
                         .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
           core_op_d = CORE_REQ_LOAD_RIGHT_HEADER;
@@ -292,12 +292,12 @@ module falafel_core
         end
       end
       REQ_FREE_MERGE_WITH_RIGHT_INSERT: begin
-        right_header_d = header_data_from_lsu_q;
+        right_header_d = header_from_lsu_q;
         merged_header.addr = addr_to_free_q;
         merged_header.next_addr = right_header_d.next_addr;
         merged_header.size = right_header_d.size + fill_header_q.size;
         if (lsu_ready_i) begin
-          send_req_to_lsu(.header_data_i(merged_header), .lsu_op_i(ALLOC_INSERT),
+          send_req_to_lsu(.header_i(merged_header), .lsu_op_i(ALLOC_INSERT),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_MERGE_RIGHT_INSERT;
@@ -305,9 +305,9 @@ module falafel_core
       end
       REQ_FREE_MERGE_RIGHT_DELETE: begin
         if (lsu_ready_i) begin
-          header_in_used_in_delete = curr_header_data_q;
+          header_in_used_in_delete = curr_header_q;
           header_in_used_in_delete.next_addr = addr_to_free_q;
-          send_req_to_lsu(.header_data_i(header_in_used_in_delete), .lsu_op_i(DELETE),
+          send_req_to_lsu(.header_i(header_in_used_in_delete), .lsu_op_i(DELETE),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_DELETE;
@@ -315,14 +315,14 @@ module falafel_core
       end
       REQ_FREE_INSERT_HEADER: begin
         if (lsu_ready_i) begin
-          send_req_to_lsu(.header_data_i(header_data_to_insert_q), .lsu_op_i(FREE_INSERT),
+          send_req_to_lsu(.header_i(header_to_insert_q), .lsu_op_i(FREE_INSERT),
                           .req_to_lsu_o(req_to_lsu_o));
           state_d   = WAIT_RSP_FROM_LSU;
           core_op_d = CORE_REQ_INSERT;
         end
       end
       REQ_RELEASE_LOCK: begin
-        send_req_to_lsu(.header_data_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
+        send_req_to_lsu(.header_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
         state_d   = WAIT_RSP_FROM_LSU;
         core_op_d = CORE_REQ_RELEASE;
       end
@@ -331,11 +331,11 @@ module falafel_core
         if (rsp_from_lsu_i.val) begin
           unique case (core_op_q)
             CORE_REQ_ACQUIRE_LOCK: begin
-              curr_header_data_d.addr = 'h10;
+              curr_header_d.addr = 'h10;
               state_d = REQ_LOAD_HEADER;
             end
             CORE_REQ_LOAD_HEADER: begin
-              header_data_from_lsu_d = rsp_from_lsu_i.header_data;
+              header_from_lsu_d = rsp_from_lsu_i.header;
               if (is_alloc_q) begin
                 state_d = ALLOC_CMP_SIZE;
               end else begin
@@ -343,11 +343,11 @@ module falafel_core
               end
             end
             CORE_REQ_LOAD_FILL_HEADER: begin
-              header_data_from_lsu_d = rsp_from_lsu_i.header_data;
+              header_from_lsu_d = rsp_from_lsu_i.header;
               state_d = FREE_JUDGE_MERGE;
             end
             CORE_REQ_LOAD_RIGHT_HEADER: begin
-              header_data_from_lsu_d = rsp_from_lsu_i.header_data;
+              header_from_lsu_d = rsp_from_lsu_i.header;
               state_d = REQ_FREE_MERGE_WITH_RIGHT_INSERT;
             end
             CORE_REQ_MERGE_RIGHT_INSERT: state_d = REQ_FREE_MERGE_RIGHT_DELETE;
@@ -369,15 +369,15 @@ module falafel_core
       is_alloc_q <= 0;
       size_to_allocate_q <= '0;
       addr_to_free_q <= '0;
-      header_data_to_update_q <= '0;
-      header_data_to_insert_q <= '0;
-      header_data_prev_q <= '0;
-      curr_header_data_q <= 0;
-      prev_header_data_q <= 0;
-      header_data_from_lsu_q <= '0;
+      header_to_update_q <= '0;
+      header_to_insert_q <= '0;
+      header_prev_q <= '0;
+      curr_header_q <= 0;
+      prev_header_q <= 0;
+      header_from_lsu_q <= '0;
       core_op_q <= CORE_REQ_RELEASE;
-      best_fit_header_data_q <= '0;
-      best_fit_header_prev_data_q <= '0;
+      best_fit_header_q <= '0;
+      best_fit_header_prev_q <= '0;
       smallest_diff_q <= '0;
       fill_header_q <= '0;
       right_header_q <= '0;
@@ -386,15 +386,15 @@ module falafel_core
       is_alloc_q <= is_alloc_d;
       size_to_allocate_q <= size_to_allocate_d;
       addr_to_free_q <= addr_to_free_d;
-      header_data_to_update_q <= header_data_to_update_d;
-      header_data_to_insert_q <= header_data_to_insert_d;
-      header_data_prev_q <= header_data_prev_d;
-      curr_header_data_q <= curr_header_data_d;
-      prev_header_data_q <= prev_header_data_d;
+      header_to_update_q <= header_to_update_d;
+      header_to_insert_q <= header_to_insert_d;
+      header_prev_q <= header_prev_d;
+      curr_header_q <= curr_header_d;
+      prev_header_q <= prev_header_d;
       core_op_q <= core_op_d;
-      header_data_from_lsu_q <= header_data_from_lsu_d;
-      best_fit_header_data_q <= best_fit_header_data_d;
-      best_fit_header_prev_data_q <= best_fit_header_prev_data_d;
+      header_from_lsu_q <= header_from_lsu_d;
+      best_fit_header_q <= best_fit_header_d;
+      best_fit_header_prev_q <= best_fit_header_prev_d;
       smallest_diff_q <= smallest_diff_d;
       fill_header_q <= fill_header_d;
       right_header_q <= right_header_d;
