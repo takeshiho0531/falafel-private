@@ -41,8 +41,9 @@ package falafel_pkg;
   localparam logic [63:0] BLOCK_NEXT_ADDR_OFFSET = 8;
   localparam int WORD_SIZE = 8;
   localparam logic [63:0] EMPTY_KEY = '0;
-  localparam [63:0] BLOCK_HEADER_SIZE = (64'($bits(header_t)) / 64'($bits(word_t)) - 1) * WORD_SIZE;
-  localparam word_t MIN_PAYLOAD_SIZE = 32;
+  // localparam [63:0] BLOCK_HEADER_SIZE = (64'($bits(header_t)) / 64'($bits(word_t)) - 1) * WORD_SIZE;
+  localparam [63:0] BLOCK_HEADER_SIZE = 64;  // TODO
+  localparam word_t MIN_PAYLOAD_SIZE = 0;  // TODO
   localparam word_t MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
 
 endpackage

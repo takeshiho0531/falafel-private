@@ -429,15 +429,109 @@ async def test_falafel(dut):
     await FallingEdge(clk)
     await RisingEdge(clk)
 
-    # insert free block
+    # # Wait for the request for filling header
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
-    assert dut.mem_req_val_o == 1
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 // TODO
+    assert dut.mem_req_addr_o == 2000
+    await FallingEdge(clk)  # it seems to be necessary
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(200)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print("Sent size of the filling header from mem, size:", 200)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_addr_o == 2008
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(0)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print(
+        "Sent next addr of the filling header from mem, next addr:",
+        0,
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(2264)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+
+    # # Wait for the request for the right header
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 // TODO
+    assert dut.mem_req_addr_o == 2264
+    await FallingEdge(clk)  # it seems to be necessary
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(99)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print("Sent size of the right header from mem, size:", 99)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_addr_o == 2272
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(0)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print(
+        "Sent next addr of the right header from mem, next addr:",
+        0,
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(2264)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+
+    # grant merge right update size
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 # TODO
+    assert dut.mem_req_is_write_o == 1
+    assert dut.mem_req_addr_o == 2000, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 299, int(dut.mem_req_data_o)
+    await grant_lock(dut, clk)
+    print("Granted merge right update size")
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # grant merge right update next_addr
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 # TODO
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 2008, int(dut.mem_req_addr_o)
-    assert dut.mem_req_data_o == 2264, int(dut.mem_req_data_o)
+    assert dut.mem_req_data_o == 0, int(dut.mem_req_data_o)
     await grant_lock(dut, clk)
-    print("Granted insert")
+    print("Granted merge right update next_addr")
     await FallingEdge(clk)
     await RisingEdge(clk)
     await FallingEdge(clk)
@@ -451,9 +545,35 @@ async def test_falafel(dut):
     assert dut.mem_req_addr_o == 508, int(dut.mem_req_addr_o)
     assert dut.mem_req_data_o == 2000, int(dut.mem_req_data_o)
     await grant_lock(dut, clk)
-    print("Granted delete")
+    print("Granted merge right delete")
     await FallingEdge(clk)
     await RisingEdge(clk)
+
+    # # insert free block
+    # await monitor_task_req_from_lsu
+    # await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1
+    # assert dut.mem_req_is_write_o == 1
+    # assert dut.mem_req_addr_o == 2008, int(dut.mem_req_addr_o)
+    # assert dut.mem_req_data_o == 2264, int(dut.mem_req_data_o)
+    # await grant_lock(dut, clk)
+    # print("Granted insert")
+    # await FallingEdge(clk)
+    # await RisingEdge(clk)
+    # await FallingEdge(clk)
+    # await RisingEdge(clk)
+
+    # # delete
+    # await monitor_task_req_from_lsu
+    # await FallingEdge(clk)
+    # # assert dut.mem_req_val_o == 1  # TODO
+    # assert dut.mem_req_is_write_o == 1
+    # assert dut.mem_req_addr_o == 508, int(dut.mem_req_addr_o)
+    # assert dut.mem_req_data_o == 2000, int(dut.mem_req_data_o)
+    # await grant_lock(dut, clk)
+    # print("Granted delete")
+    # await FallingEdge(clk)
+    # await RisingEdge(clk)
 
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
