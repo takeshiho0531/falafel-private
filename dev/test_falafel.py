@@ -803,4 +803,233 @@ async def test_falafel_free_merge_left(dut):
     for i in range(10):
         await FallingEdge(clk)
 
+
+@cocotb.test()
+async def test_falafel_free_merge_both_sides(dut):
+    clk = dut.clk_i
+    cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+
+    linked_list = LinkedList()
+    linked_list.add_node(16, 160, 300)
+    linked_list.add_node(300, 100, 500)
+    linked_list.add_node(500, 300, 2000)
+    linked_list.add_node(2000, 299, 0)
+    linked_list.print_list()
+
+    await reset_dut(dut, clk)
+
+    dut.mem_req_rdy_i.setimmediatevalue(1)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+
+    for i in range(10):
+        await FallingEdge(clk)
+    # # free
+    # send req to free
+    # assert dut.mem_rsp_rdy_o == 1
+    dut.mem_rsp_rdy_o.setimmediatevalue(1)
+    await send_req_to_free(dut, clk, 800)
+    print("Sent request to free")
+
+    # Wait for the lock request
+    await monitor_task_req_from_lsu
+    await grant_lock(dut, clk)
+    print("Granted lock")
+
+    await monitor_task_req_from_lsu
+    await monitor_task_falafel_ready
+    await grant_lock(dut, clk)
+    print("Granted cas")
+
+    # Wait for the request for the first header
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_val_o == 1
+    assert dut.mem_req_addr_o == 16, int(dut.mem_req_addr_o)
+    await FallingEdge(clk)  # it seems to be necessary
+    await send_size_from_mem(dut, clk, addr=16, linked_list=linked_list)  # noqa
+    print("Sent size of the first header from mem, size:", linked_list.get_node(16)[0])
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await send_next_addr_from_mem(dut, clk, addr=16, linked_list=linked_list)  # noqa
+    print(
+        "Sent next addr of the first header from mem, next addr:",
+        linked_list.get_node(16)[1],
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # # Wait for the request for second header
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_val_o == 1
+    assert dut.mem_req_addr_o == 300
+    await FallingEdge(clk)  # it seems to be necessary
+    await send_size_from_mem(dut, clk, addr=300, linked_list=linked_list)  # noqa
+    print(
+        "Sent size of the second header from mem, size:", linked_list.get_node(300)[0]
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await send_next_addr_from_mem(dut, clk, addr=300, linked_list=linked_list)  # noqa
+    print(
+        "Sent next addr of the second header from mem, next addr:",
+        linked_list.get_node(300)[1],
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # # Wait for the request for third header
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_val_o == 1
+    assert dut.mem_req_addr_o == 500
+    await FallingEdge(clk)  # it seems to be necessary
+    # await send_size_from_mem(dut, clk, addr=500, linked_list=linked_list)  # noqa
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(284)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print("Sent size of the third header from mem, size:", linked_list.get_node(500)[0])
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    # await send_next_addr_from_mem(dut, clk, addr=500, linked_list=linked_list)  # noqa
+    # assert dut.mem_req_val_o == 1
+    assert dut.mem_req_addr_o == 508
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(2000)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print(
+        "Sent next addr of the third header from mem, next addr:",
+        linked_list.get_node(500)[1],
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # # Wait for the request for target header (800)
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 // TODO
+    assert dut.mem_req_addr_o == 800, int(dut.mem_req_addr_o)
+    await FallingEdge(clk)  # it seems to be necessary
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(1184)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print("Sent size of the right header from mem, size:", 1184)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_addr_o == 808, int(dut.mem_req_addr_o)
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(2000)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print(
+        "Sent next addr of the right header from mem, next addr:",
+        2000,
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # # Wait for the request for the right header (2000)
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 // TODO
+    assert dut.mem_req_addr_o == 2000
+    await FallingEdge(clk)  # it seems to be necessary
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(299)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print("Sent size of the right header from mem, size:", 299)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    assert dut.mem_req_addr_o == 2008, int(dut.mem_req_addr_o)
+    dut.mem_rsp_val_i.setimmediatevalue(1)
+    dut.mem_rsp_data_i.setimmediatevalue(0)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+    print(
+        "Sent next addr of the right header from mem, next addr:",
+        0,
+    )
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # grant merge left update size
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 # TODO
+    # assert dut.mem_req_is_write_o == 1 # TODO
+    assert dut.mem_req_addr_o == 500, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 1799, int(dut.mem_req_data_o)
+    await grant_lock(dut, clk)
+    print("Granted merge left update size")
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # grant merge right update next_addr
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    # assert dut.mem_req_val_o == 1 # TODO
+    assert dut.mem_req_is_write_o == 1
+    assert dut.mem_req_addr_o == 508, int(dut.mem_req_addr_o)
+    assert dut.mem_req_data_o == 0, int(dut.mem_req_data_o)
+    await grant_lock(dut, clk)
+    print("Granted merge left update next_addr")
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    # release lock
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    assert dut.mem_req_data_o == 0, int(dut.mem_req_data_o)
+    await grant_lock(dut, clk)
+    print("Granted release lock")  # TODO
+    await FallingEdge(clk)
+    await RisingEdge(clk)
+
+    for i in range(10):
+        await FallingEdge(clk)
+
     assert True

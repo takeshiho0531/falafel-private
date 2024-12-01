@@ -28,7 +28,8 @@ module falafel_core
     FREE_CHECK_NEIGHBORS,
     WAIT_RSP_FROM_LSU,
     REQ_FREE_MERGE_RIGHT_HEADER,
-    REQ_FREE_MERGE_LEFT_HEADER
+    REQ_FREE_MERGE_LEFT_HEADER,
+    REQ_FREE_MERGE_BOTH_SIDES
   } core_state_e;
 
   typedef enum integer {
@@ -41,7 +42,8 @@ module falafel_core
     CORE_LOAD_FREE_TARGET_HEADER,
     CORE_LOAD_RIGHT_HEADER,
     CORE_MERGE_RIGHT,
-    CORE_MERGE_LEFT
+    CORE_MERGE_LEFT,
+    CORE_MERGE_BOTH_SIDES
   } core_op_e;
 
   typedef enum integer {
@@ -68,7 +70,7 @@ module falafel_core
   logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
   header_t load_req_header;
   header_t right_header_d, right_header_q;
-  logic does_merge_with_right, does_merge_with_left;
+  logic does_merge_right, does_merge_left, does_merge_both_sides_d, does_merge_both_sides_q;
   header_t merged_block_header;
   header_t header_to_adjust_link_free;
   load_type_t load_type_d, load_type_q;
@@ -100,8 +102,9 @@ module falafel_core
     load_req_header = '0;
     free_target_header_d = free_target_header_q;
     right_header_d = right_header_q;
-    does_merge_with_left = 0;
-    does_merge_with_right = 0;
+    does_merge_left = 0;
+    does_merge_right = 0;
+    does_merge_both_sides_d = does_merge_both_sides_q;
     merged_block_header = '0;
     header_to_adjust_link_free = '0;
     load_type_d = load_type_q;
@@ -125,6 +128,7 @@ module falafel_core
         free_target_header_d = '0;
         right_header_d = '0;
         load_type_d = SEARCH;
+        does_merge_both_sides_d = 0;
 
         if (req_alloc_valid_i) begin
           is_alloc_d = is_alloc_i ? 1 : 0;
@@ -206,7 +210,8 @@ module falafel_core
               alloc_target_header_d.addr = best_fit_header_q.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr = best_fit_header_q.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
+              header_to_create_d.addr =
+                best_fit_header_q.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
               header_to_create_d.size = best_fit_header_q.size - size_to_allocate_q;
               header_to_create_d.next_addr = best_fit_header_q.next_addr;
               header_to_adjust_link_d.next_addr = header_to_create_d.addr;
@@ -222,7 +227,8 @@ module falafel_core
               alloc_target_header_d.addr = best_fit_header_d.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr = best_fit_header_d.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
+              header_to_create_d.addr =
+                best_fit_header_d.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
               header_to_create_d.size = best_fit_header_d.size - size_to_allocate_q;
               header_to_create_d.next_addr = best_fit_header_d.next_addr;
               header_to_adjust_link_d.next_addr = header_to_create_d.addr;
@@ -283,19 +289,23 @@ module falafel_core
       end
       FREE_CHECK_NEIGHBORS: begin
         free_target_header_d = header_from_lsu_q;
-        if (addr_to_free_q + BLOCK_HEADER_SIZE + free_target_header_d.size
-        == curr_header_q.next_addr) begin
-          does_merge_with_right = 1;
+        does_merge_right = (addr_to_free_q + BLOCK_HEADER_SIZE + free_target_header_d.size
+          == curr_header_q.next_addr);
+        does_merge_left = (curr_header_q.addr + BLOCK_HEADER_SIZE + curr_header_q.size
+          == addr_to_free_q);
+        does_merge_both_sides_d = does_merge_right && does_merge_left;
+
+        if (does_merge_both_sides_d) begin
+          state_d = REQ_LOAD_HEADER;
+          load_type_d = FREE_RIGHT_HEADER;
+        end else if (does_merge_right) begin
           state_d = REQ_LOAD_HEADER;
           load_type_d = FREE_RIGHT_HEADER;
           header_to_adjust_link_d = curr_header_q;
           header_to_adjust_link_d.next_addr = addr_to_free_q;
-        end
-        if (curr_header_q.addr + BLOCK_HEADER_SIZE + curr_header_q.size == addr_to_free_q) begin
-          does_merge_with_left = 1;
+        end else if (does_merge_left) begin
           state_d = REQ_FREE_MERGE_LEFT_HEADER;
-        end
-        if (!does_merge_with_left && !does_merge_with_right) begin
+        end else if (!does_merge_left && !does_merge_right) begin
           header_to_create_d.addr = addr_to_free_q;
           header_to_create_d.next_addr = header_from_lsu_q.next_addr;
           header_to_adjust_link_d.addr = header_from_lsu_q.addr;
@@ -303,12 +313,26 @@ module falafel_core
           state_d = REQ_CREATE_NEW_HEADER;
         end
       end
+      REQ_FREE_MERGE_BOTH_SIDES: begin
+        right_header_d = header_from_lsu_q;
+        merged_block_header.addr = curr_header_q.addr;
+        merged_block_header.next_addr = right_header_d.next_addr;
+        merged_block_header.size =
+          curr_header_q.size + right_header_d.size + free_target_header_q.size
+          + 2*BLOCK_HEADER_SIZE;
+        if (lsu_ready_i) begin
+          send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
+                          .req_to_lsu_o(req_to_lsu_o));
+          state_d   = WAIT_RSP_FROM_LSU;
+          core_op_d = CORE_MERGE_BOTH_SIDES;
+        end
+      end
       REQ_FREE_MERGE_RIGHT_HEADER: begin
         right_header_d = header_from_lsu_q;
         merged_block_header.addr = addr_to_free_q;
         merged_block_header.next_addr = right_header_d.next_addr;
         merged_block_header.size =
-          right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;  // TODO
+          right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;
         if (lsu_ready_i) begin
           send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
                           .req_to_lsu_o(req_to_lsu_o));
@@ -356,10 +380,15 @@ module falafel_core
             end
             CORE_LOAD_RIGHT_HEADER: begin
               header_from_lsu_d = rsp_from_lsu_i.header;
-              state_d = REQ_FREE_MERGE_RIGHT_HEADER;
+              if (does_merge_both_sides_q) begin
+                state_d = REQ_FREE_MERGE_BOTH_SIDES;
+              end else begin
+                state_d = REQ_FREE_MERGE_RIGHT_HEADER;
+              end
             end
             CORE_MERGE_RIGHT: state_d = REQ_ADJUST_LINK;
             CORE_MERGE_LEFT: state_d = REQ_RELEASE_LOCK;
+            CORE_MERGE_BOTH_SIDES: state_d = REQ_RELEASE_LOCK;
             CORE_ADJUST_LINK: state_d = REQ_RELEASE_LOCK;
             CORE_ADJUST_ALLOCATED_HEADER: state_d = REQ_CREATE_NEW_HEADER;
             CORE_CREATE_NEW_HEADER: state_d = REQ_ADJUST_LINK;
@@ -391,6 +420,7 @@ module falafel_core
       free_target_header_q <= '0;
       right_header_q <= '0;
       load_type_q <= SEARCH;
+      does_merge_both_sides_q <= 0;
     end else begin
       state_q <= state_d;
       is_alloc_q <= is_alloc_d;
@@ -409,6 +439,7 @@ module falafel_core
       free_target_header_q <= free_target_header_d;
       right_header_q <= right_header_d;
       load_type_q <= load_type_d;
+      does_merge_both_sides_q <= does_merge_both_sides_d;
     end
   end
 
