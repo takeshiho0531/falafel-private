@@ -1,8 +1,8 @@
 # dev log
 - Nov 21:  moved the contents of the dev-core branch of [hw-allocator](https://github.com/takeshiho0531/hw-allocator) to the v2-dev branch of [falafel-private](https://github.com/takeshiho0531/falafel-private) 🙌
-- Nov 22:  <br><span style="color: magenta;">falafel v2 supports first fit</span> @[8305eb2a](https://github.com/jfarresg/falafel-private/tree/8305eb2a7a5b417a713e5f56754c76eb9fdf5a59) <br>
-<span style="color: magenta;">falafel v2 supports best fit</span> @[afb19ab7](https://github.com/jfarresg/falafel-private/tree/afb19ab7a4f71eb5533b0bd1b2315c628715af37)
+- Nov 22:  <br><span style="color: magenta;"><u>**falafel v2 supports first fit**</u></span> @[8305eb2a](https://github.com/jfarresg/falafel-private/tree/8305eb2a7a5b417a713e5f56754c76eb9fdf5a59) <br>
+<span style="color: magenta;"><u>**falafel v2 supports best fit**</u></span> @[afb19ab7](https://github.com/jfarresg/falafel-private/tree/afb19ab7a4f71eb5533b0bd1b2315c628715af37)
 - Nov 28: implement a simple free logic @[f20cd650](https://github.com/jfarresg/falafel-private/tree/f20cd65041cb26238f44287c8eb97e2ed6dab910)
 - Nov 29: implement a feature to merge blocks when freeing, if the block is next to the one on the right @[15af0dda](https://github.com/jfarresg/falafel-private/tree/15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0)
 - Nov 30: <br> implement a feature to merge blocks when freeing, if the block is next to the one on the left @[2003be1c](https://github.com/jfarresg/falafel-private/tree/2003be1c5972101a479c7aad083bac49d947aa1c) <br>
-<span style="color: magenta;">falafel v2 now supports a feature to merge blocks when freeing </span>if the free blocks are next to each other @[db109d22](https://github.com/jfarresg/falafel-private/tree/db109d22db36fe63487d010262a3fcaa1756f88e)  
+<span style="color: magenta;"><u>**falafel v2 now supports a feature to merge blocks when freeing**</u></span> if the free blocks are next to each other @[db109d22](https://github.com/jfarresg/falafel-private/tree/db109d22db36fe63487d010262a3fcaa1756f88e)  
