@@ -135,7 +135,7 @@ async def grant_lock(dut, clk):
 
 
 @cocotb.test()
-async def test_falafel(dut):
+async def test_falafel_alloc(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
@@ -336,7 +336,29 @@ async def test_falafel(dut):
     for i in range(10):
         await FallingEdge(clk)
 
-    print("---------------------move to free-----------------")
+
+@cocotb.test()
+async def test_falafel_free_merge_right(dut):
+    clk = dut.clk_i
+    cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+
+    linked_list = LinkedList()
+    linked_list.add_node(16, 160, 300)
+    linked_list.add_node(300, 100, 500)
+    linked_list.add_node(500, 300, 2000)
+    linked_list.add_node(2000, 299, 0)
+    linked_list.print_list()
+
+    await reset_dut(dut, clk)
+
+    dut.mem_req_rdy_i.setimmediatevalue(1)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+
+    for i in range(10):
+        await FallingEdge(clk)
     # # free
     # send req to free
     assert dut.mem_rsp_rdy_o == 1
@@ -560,7 +582,29 @@ async def test_falafel(dut):
     for i in range(10):
         await FallingEdge(clk)
 
-    print("---------------------move to free part2-----------------")
+
+@cocotb.test()
+async def test_falafel_free_merge_left(dut):
+    clk = dut.clk_i
+    cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+
+    linked_list = LinkedList()
+    linked_list.add_node(16, 160, 300)
+    linked_list.add_node(300, 100, 500)
+    linked_list.add_node(500, 300, 2000)
+    linked_list.add_node(2000, 299, 0)
+    linked_list.print_list()
+
+    await reset_dut(dut, clk)
+
+    dut.mem_req_rdy_i.setimmediatevalue(1)
+    dut.mem_rsp_val_i.setimmediatevalue(0)
+
+    for i in range(10):
+        await FallingEdge(clk)
     # # free
     # send req to free
     # assert dut.mem_rsp_rdy_o == 1
