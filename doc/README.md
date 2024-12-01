@@ -83,7 +83,7 @@ I recommend starting with the [mechanisms section](#mechanisms) first :)
 - `ALLOC_SEARCH_POS`: find a fitting location from the free block; first fit or best fit
 - `FREE_SEARCH_POS`: find a proper block to free
 - `FREE_CHECK_NEIGHBORS`: check if there are neighboring free blocks to the block to be freed
-- `REQ_ADJUST_ALLOCATED_HEADER`:
+- `REQ_ADJUST_ALLOCATED_HEADER`
 - `REQ_FREE_MERGE_BOTH_SIDES`
 - `REQ_FREE_MERGE_RIGHT_HEADER`
 - `REQ_FREE_MERGE_LEFT_HEADER`
@@ -112,7 +112,7 @@ the part responsible for interactions with memory
     request loading the next header address of the free block to the mem
 - `STORE_UPDATED_SIZE`: <br>
     request storing the size of the free block to the mem (setting the updated size of the free block)
-- `STORE_UPDATED_NEXT_ADDR`
+- `STORE_UPDATED_NEXT_ADDR`: <br>
     request storing the next header address of the free block to the mem (setting te updated next address of the free block)
 - `WAIT_RSP_FROM_MEM`
 - `SEND_RSP_TO_CORE`
@@ -121,7 +121,7 @@ the part responsible for interactions with memory
 - the interface overview
 ![interface overview](img/interfaces_overview.png)
 - the interactions in each procedure <br>
-    →
+    → the core specifies the operation it wants to perform to the lsu using `req_lsu_op`
     - req_lsu_op: `LOCK` <br>
     ![interaction lock](img/lock.png)
     - release lock: `UNLOCK` <br>

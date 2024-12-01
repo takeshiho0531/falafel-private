@@ -1,16 +1,19 @@
 # Falafel version2
 
-last update: Nov 24, 2024
+last update: Nov 30, 2024
 
 A hardware memory allocator; <br>
-this allocator supports the first-fit and the best-fit algorithm
+this allocator supports 
+- the first-fit strategy 
+- the best-fit strategy
+- merge free blocks next to each other
 
 ## Related Documents
 - the devlopment log →　[dev_log.md](dev/dev_log.md)
 - the documents → [readme.md](doc/README.md)
 
 ## Setting up
-Falafel v2 uses [Verilator](https://verilator.org/guide/latest/#) for simulation and [Poetry](https://python-poetry.org/) to manage library version dependencies for running its testbench (we use Cocotb for running the simulation). <br>
+Falafel v2 uses [Verilator](https://verilator.org/guide/latest/#) (v5.008) for simulation and [Poetry](https://python-poetry.org/) to manage library version dependencies for running its testbench (we use Cocotb for running the simulation). <br>
 these days I prefer Poetry :) <br>
 
 1. install poetry <br>
