@@ -478,11 +478,11 @@ async def test_falafel(dut):
     assert dut.mem_req_addr_o == 2216
     await FallingEdge(clk)  # it seems to be necessary
     dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(99)
+    dut.mem_rsp_data_i.setimmediatevalue(83)
     await FallingEdge(clk)
     await RisingEdge(clk)
     dut.mem_rsp_val_i.setimmediatevalue(0)
-    print("Sent size of the right header from mem, size:", 99)
+    print("Sent size of the right header from mem, size:", 83)
     await FallingEdge(clk)
     await RisingEdge(clk)
     await FallingEdge(clk)

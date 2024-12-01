@@ -307,7 +307,8 @@ module falafel_core
         right_header_d = header_from_lsu_q;
         merged_block_header.addr = addr_to_free_q;
         merged_block_header.next_addr = right_header_d.next_addr;
-        merged_block_header.size = right_header_d.size + free_target_header_q.size;  // TODO
+        merged_block_header.size =
+          right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;  // TODO
         if (lsu_ready_i) begin
           send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
                           .req_to_lsu_o(req_to_lsu_o));
@@ -318,7 +319,8 @@ module falafel_core
       REQ_FREE_MERGE_LEFT_HEADER: begin
         merged_block_header.addr = curr_header_q.addr;
         merged_block_header.next_addr = curr_header_q.next_addr;
-        merged_block_header.size = curr_header_q.size + free_target_header_q.size + BLOCK_HEADER_SIZE;
+        merged_block_header.size =
+          curr_header_q.size + free_target_header_q.size + BLOCK_HEADER_SIZE;
         if (lsu_ready_i) begin
           send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
                           .req_to_lsu_o(req_to_lsu_o));
