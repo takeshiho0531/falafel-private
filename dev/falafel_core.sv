@@ -22,7 +22,7 @@ module falafel_core
     REQ_LOAD_HEADER,
     ALLOC_SEARCH_POS,
     REQ_CREATE_NEW_HEADER,
-    REQ_ALLOC_ADJUST_ALLOCATED_HEADER,
+    REQ_ADJUST_ALLOCATED_HEADER,
     REQ_ADJUST_LINK,
     FREE_SEARCH_POS,
     FREE_CHECK_NEIGHBORS,
@@ -206,7 +206,7 @@ module falafel_core
           if (best_fit_header_d.next_addr != '0) begin
             header_to_adjust_link_d.addr = best_fit_header_prev_q.addr;
             if (best_fit_header_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
-              state_d = REQ_ALLOC_ADJUST_ALLOCATED_HEADER;
+              state_d = REQ_ADJUST_ALLOCATED_HEADER;
               alloc_target_header_d.addr = best_fit_header_q.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
@@ -223,7 +223,7 @@ module falafel_core
           end else begin
             header_to_adjust_link_d.addr = best_fit_header_prev_d.addr;
             if (best_fit_header_d.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
-              state_d = REQ_ALLOC_ADJUST_ALLOCATED_HEADER;
+              state_d = REQ_ADJUST_ALLOCATED_HEADER;
               alloc_target_header_d.addr = best_fit_header_d.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
@@ -240,7 +240,7 @@ module falafel_core
           end
         end
       end
-      REQ_ALLOC_ADJUST_ALLOCATED_HEADER: begin
+      REQ_ADJUST_ALLOCATED_HEADER: begin
         if (lsu_ready_i) begin
           send_req_to_lsu(.header_i(alloc_target_header_q),
                           .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),  // TODO

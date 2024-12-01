@@ -12,11 +12,6 @@ package falafel_pkg;
     EDIT_NEXT_ADDR
   } req_lsu_op_e;
 
-  // typedef struct packed {
-  //   logic [63:0] size;
-  //   logic [63:0] next_addr;
-  // } header_t;
-
     localparam unsigned DATA_W = 64;
 
   typedef struct packed {
