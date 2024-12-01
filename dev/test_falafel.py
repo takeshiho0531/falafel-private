@@ -295,7 +295,7 @@ async def test_falafel(dut):
     await FallingEdge(clk)
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
-    assert dut.mem_req_addr_o == 2264, int(dut.mem_req_addr_o)
+    assert dut.mem_req_addr_o == 2216, int(dut.mem_req_addr_o)
     assert dut.mem_req_data_o == 99
     await FallingEdge(clk)
     await grant_lock(dut, clk)
@@ -308,7 +308,7 @@ async def test_falafel(dut):
     await FallingEdge(clk)
     # assert dut.mem_req_val_o == 1 # TODO
     assert dut.mem_req_is_write_o == 1
-    assert dut.mem_req_addr_o == 2272, int(dut.mem_req_addr_o)
+    assert dut.mem_req_addr_o == 2224, int(dut.mem_req_addr_o)
     await grant_lock(dut, clk)
     print("Granted next addr update")
     await FallingEdge(clk)
@@ -319,7 +319,7 @@ async def test_falafel(dut):
     assert dut.mem_req_val_o == 1
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 508, int(dut.mem_req_addr_o)
-    assert dut.mem_req_data_o == 2264, int(dut.mem_req_data_o)
+    assert dut.mem_req_data_o == 2216, int(dut.mem_req_data_o)
     await grant_lock(dut, clk)
     print("Granted delete")
     await FallingEdge(clk)
@@ -416,7 +416,7 @@ async def test_falafel(dut):
     # assert dut.mem_req_val_o == 1
     assert dut.mem_req_addr_o == 508
     dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(2264)
+    dut.mem_rsp_data_i.setimmediatevalue(2216)
     await FallingEdge(clk)
     await RisingEdge(clk)
     dut.mem_rsp_val_i.setimmediatevalue(0)
@@ -475,7 +475,7 @@ async def test_falafel(dut):
     await RisingEdge(clk)
     await FallingEdge(clk)
     # assert dut.mem_req_val_o == 1 // TODO
-    assert dut.mem_req_addr_o == 2264
+    assert dut.mem_req_addr_o == 2216
     await FallingEdge(clk)  # it seems to be necessary
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(99)
@@ -488,7 +488,7 @@ async def test_falafel(dut):
     await FallingEdge(clk)
     await RisingEdge(clk)
     await FallingEdge(clk)
-    assert dut.mem_req_addr_o == 2272
+    assert dut.mem_req_addr_o == 2224
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(0)
     await FallingEdge(clk)
@@ -504,7 +504,7 @@ async def test_falafel(dut):
     await RisingEdge(clk)
 
     dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(2264)
+    dut.mem_rsp_data_i.setimmediatevalue(2216)
     await FallingEdge(clk)
     await RisingEdge(clk)
     dut.mem_rsp_val_i.setimmediatevalue(0)

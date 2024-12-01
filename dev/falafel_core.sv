@@ -205,7 +205,7 @@ module falafel_core
               alloc_target_header_d.addr = best_fit_header_q.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr = best_fit_header_q.addr + 64 + size_to_allocate_q;  // TODO
+              header_to_create_d.addr = best_fit_header_q.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
               header_to_create_d.size = best_fit_header_q.size - size_to_allocate_q;
               header_to_create_d.next_addr = best_fit_header_q.next_addr;
               header_to_adjust_link_d.next_addr = header_to_create_d.addr;
@@ -221,7 +221,7 @@ module falafel_core
               alloc_target_header_d.addr = best_fit_header_d.addr;
               alloc_target_header_d.size = size_to_allocate_q;  // TODO
               alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr = best_fit_header_d.addr + 64 + size_to_allocate_q;  // TODO
+              header_to_create_d.addr = best_fit_header_d.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
               header_to_create_d.size = best_fit_header_d.size - size_to_allocate_q;
               header_to_create_d.next_addr = best_fit_header_d.next_addr;
               header_to_adjust_link_d.next_addr = header_to_create_d.addr;
