@@ -8,10 +8,8 @@ package falafel_pkg;
     LOCK,
     UNLOCK,
     LOAD,
-    UPDATE,
-    ALLOC_INSERT,
-    FREE_INSERT,
-    DELETE
+    EDIT_SIZE_AND_NEXT_ADDR,
+    EDIT_NEXT_ADDR
   } req_lsu_op_e;
 
   // typedef struct packed {

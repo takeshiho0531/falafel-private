@@ -90,7 +90,7 @@ module falafel_lsu
         lsu_ready_o   = 1;
         mem_rsp_rdy_o = 1;
         if (core_req_header_i.val) begin
-          req_header_d = core_req_header_i;
+          req_header_d  = core_req_header_i;
           mem_rsp_rdy_o = 0;
 
           unique case (core_req_header_i.lsu_op)
@@ -106,19 +106,11 @@ module falafel_lsu
               state_d  = LOAD_SIZE;
               lsu_op_d = LSU_LOAD_SIZE;
             end
-            UPDATE: begin
+            EDIT_SIZE_AND_NEXT_ADDR: begin
               state_d  = STORE_UPDATED_SIZE;
               lsu_op_d = LSU_STORE_SIZE;
             end
-            ALLOC_INSERT: begin
-              state_d  = STORE_UPDATED_SIZE;
-              lsu_op_d = LSU_STORE_SIZE;
-            end
-            FREE_INSERT: begin
-              state_d  = STORE_UPDATED_NEXT_ADDR;
-              lsu_op_d = LSU_STORE_NEXT_ADDR;
-            end
-            DELETE: begin
+            EDIT_NEXT_ADDR: begin
               state_d  = STORE_UPDATED_NEXT_ADDR;
               lsu_op_d = LSU_STORE_NEXT_ADDR;
             end
@@ -127,9 +119,8 @@ module falafel_lsu
         end
       end
       LOAD_KEY: begin
-        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
-                          .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
-                          .mem_req_is_write_o(mem_req_is_write_o));
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr), .mem_req_val_o(mem_req_val_o),
+                          .mem_req_addr_o(mem_req_addr_o), .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
@@ -143,38 +134,35 @@ module falafel_lsu
         end
       end
       LOAD_SIZE: begin
-        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr), .mem_req_val_o(mem_req_val_o),
+                          .mem_req_addr_o(mem_req_addr_o), .mem_req_is_write_o(mem_req_is_write_o));
+        if (mem_req_rdy_i) begin
+          state_d = WAIT_RSP_FROM_MEM;
+        end
+      end
+      LOAD_NEXT_ADDR: begin
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
-      LOAD_NEXT_ADDR: begin
-        send_mem_load_req(
-            .addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
-            .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
-            .mem_req_is_write_o(mem_req_is_write_o));
-        if (mem_req_rdy_i) begin
-          state_d = WAIT_RSP_FROM_MEM;
-        end
-      end
       STORE_UPDATED_SIZE: begin
         send_mem_store_req(.addr_to_send_i(req_header_q.header.addr),
-                           .data_to_send_i(req_header_q.header.size),
-                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
-                           .mem_req_data_o(mem_req_data_o),
+                           .data_to_send_i(req_header_q.header.size), .mem_req_val_o(mem_req_val_o),
+                           .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
       STORE_UPDATED_NEXT_ADDR: begin
-        send_mem_store_req(
-            .addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
-            .data_to_send_i(req_header_q.header.next_addr), .mem_req_val_o(mem_req_val_o),
-            .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
-            .mem_req_is_write_o(mem_req_is_write_o));
+        send_mem_store_req(.addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
+                           .data_to_send_i(req_header_q.header.next_addr),
+                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                           .mem_req_data_o(mem_req_data_o),
+                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
