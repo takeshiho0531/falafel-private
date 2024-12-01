@@ -4,3 +4,5 @@
 the best-fit allocator in falafel v2 passed the simple malloc test at commit [afb19ab7a4f71eb5533b0bd1b2315c628715af37](https://github.com/jfarresg/falafel-private/tree/afb19ab7a4f71eb5533b0bd1b2315c628715af37)
 - Nov 28: implement a simple free logic at commit [f20cd65041cb26238f44287c8eb97e2ed6dab910](https://github.com/jfarresg/falafel-private/tree/f20cd65041cb26238f44287c8eb97e2ed6dab910)
 - Nov 29: implement a feature to merge blocks when freeing, if the block is next to the one on the right at commit [15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0](https://github.com/jfarresg/falafel-private/tree/15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0)
+- Nov 30: <br> implement a feature to merge blocks when freeing, if the block is next to the one on the left at commit [2003be1c5972101a479c7aad083bac49d947aa1c](https://github.com/jfarresg/falafel-private/tree/2003be1c5972101a479c7aad083bac49d947aa1c)
+finish implementing a feature to merge blocks when freeing if the free blocks are next to each other at commit [db109d22db36fe63487d010262a3fcaa1756f88e](https://github.com/jfarresg/falafel-private/tree/db109d22db36fe63487d010262a3fcaa1756f88e)  
