@@ -20,31 +20,30 @@ module falafel_core
     REQ_ACQUIRE_LOCK,
     REQ_RELEASE_LOCK,
     REQ_LOAD_HEADER,
-    ALLOC_SEARCH_POS,
-    REQ_CREATE_NEW_HEADER,
+    ALLOC_SEARCH_POS_BEST_FIT,
     REQ_ADJUST_ALLOCATED_HEADER,
-    REQ_ADJUST_LINK,
     FREE_SEARCH_POS,
     FREE_CHECK_NEIGHBORS,
-    WAIT_RSP_FROM_LSU,
-    REQ_FREE_MERGE_RIGHT_HEADER,
-    REQ_FREE_MERGE_LEFT_HEADER,
-    REQ_FREE_MERGE_BOTH_SIDES
+    FREE_MERGE_NEIGHBOR,
+    REQ_CREATE_NEW_HEADER,
+    REQ_ADJUST_LINK,
+    WAIT_RSP_FROM_LSU
   } core_state_e;
 
   typedef enum integer {
-    CORE_ADJUST_ALLOCATED_HEADER,
-    CORE_ADJUST_LINK,
-    CORE_CREATE_NEW_HEADER,
+    CORE_ACQUIRE_LOCK,
     CORE_RELEASE,
     CORE_LOAD_HEADER,
-    CORE_ACQUIRE_LOCK,
+    CORE_ADJUST_ALLOCATED_HEADER,
     CORE_LOAD_FREE_TARGET_HEADER,
-    CORE_LOAD_RIGHT_HEADER,
+    CORE_LOAD_RIGHT_HEADER_FOR_MERGE_BOTH_SIDES,
+    CORE_LOAD_RIGHT_HEADER_FOR_MERGE_RIGHT,
     CORE_MERGE_RIGHT,
     CORE_MERGE_LEFT,
-    CORE_MERGE_BOTH_SIDES
-  } core_op_e;
+    CORE_MERGE_BOTH_SIDES,
+    CORE_ADJUST_LINK,
+    CORE_CREATE_NEW_HEADER
+  } core_op_t;
 
   typedef enum integer {
     SEARCH,
@@ -53,82 +52,120 @@ module falafel_core
   } load_type_t;
 
   core_state_e state_d, state_q;
-  core_op_e core_op_d, core_op_q;
+  core_op_t core_op_d, core_op_q;
   logic is_alloc_d, is_alloc_q;  // 1: alloc, 0: free
   logic [DATA_W-1:0] size_to_allocate_d, size_to_allocate_q;
   logic [DATA_W-1:0] addr_to_free_d, addr_to_free_q;
 
   header_t header_from_lsu_d, header_from_lsu_q;
+  header_t load_req_header;
+  load_type_t load_type_d, load_type_q;
+
   header_t prev_header_d, prev_header_q;
   header_t curr_header_d, curr_header_q;
+  header_t best_fit_header_d, best_fit_header_q;
+  header_t best_fit_header_prev_d, best_fit_header_prev_q;
+  logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
+
   header_t alloc_target_header_d, alloc_target_header_q;
   header_t free_target_header_d, free_target_header_q;
   header_t header_to_create_d, header_to_create_q;
   header_t header_to_adjust_link_d, header_to_adjust_link_q;
-  header_t best_fit_header_d, best_fit_header_q;
-  header_t best_fit_header_prev_d, best_fit_header_prev_q;
-  logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
-  header_t load_req_header;
+
+  logic does_merge_right, does_merge_left, does_merge_both_sides;
   header_t right_header_d, right_header_q;
-  logic does_merge_right, does_merge_left, does_merge_both_sides_d, does_merge_both_sides_q;
-  header_t merged_block_header;
-  header_t header_to_adjust_link_free;
-  load_type_t load_type_d, load_type_q;
+  header_t merged_block_header_d, merged_block_header_q;
+
 
   task automatic send_req_to_lsu(input header_t header_i, input req_lsu_op_e lsu_op_i,
                                  output header_req_t req_to_lsu_o);
-    req_to_lsu_o.header = header_i;
-    req_to_lsu_o.lsu_op = lsu_op_i;
-    req_to_lsu_o.val = 1;
+    begin
+      req_to_lsu_o.header = header_i;
+      req_to_lsu_o.lsu_op = lsu_op_i;
+      req_to_lsu_o.val = 1;
+    end
+  endtask
+
+  task automatic set_headers_after_best_fit(
+      input header_t best_fit_header_i, input header_t best_fit_header_prev_i,
+      input logic [DATA_W-1:0] size_to_allocate_i, output header_t alloc_target_header_o,
+      output header_t header_to_create_o, output header_t header_to_adjust_link_o,
+      output core_state_e next_state_o);
+    begin
+      header_to_adjust_link_o.addr = best_fit_header_prev_i.addr;
+      if (best_fit_header_i.size - size_to_allocate_i >= MIN_ALLOC_SIZE) begin
+        next_state_o = REQ_ADJUST_ALLOCATED_HEADER;
+        alloc_target_header_o.addr = best_fit_header_i.addr;
+        alloc_target_header_o.size = size_to_allocate_i;  // TODO
+        alloc_target_header_o.next_addr = '0;
+        header_to_create_o.addr = best_fit_header_i.addr + BLOCK_HEADER_SIZE + size_to_allocate_i;
+        header_to_create_o.size = best_fit_header_i.size - size_to_allocate_i;
+        header_to_create_o.next_addr = best_fit_header_i.next_addr;
+        header_to_adjust_link_o.next_addr = header_to_create_o.addr;
+      end else begin
+        alloc_target_header_o.next_addr = '0;
+        header_to_adjust_link_o.next_addr = best_fit_header_i.next_addr;
+        next_state_o = REQ_ADJUST_LINK;
+      end
+    end
   endtask
 
   always_comb begin : core_fsm
+    req_to_lsu_o = '0;
+    core_ready_o = 0;
+
     state_d = state_q;
+    is_alloc_d = is_alloc_q;
     size_to_allocate_d = size_to_allocate_q;
     addr_to_free_d = addr_to_free_q;
-
-    req_to_lsu_o = '0;
-    alloc_target_header_d = alloc_target_header_q;
-    header_to_create_d = header_to_create_q;
-    header_to_adjust_link_d = header_to_adjust_link_q;
-    curr_header_d = curr_header_q;
-    prev_header_d = prev_header_q;
-    core_ready_o = 0;
     core_op_d = core_op_q;
+
+    load_req_header = '0;
+    load_type_d = load_type_q;
+
+    prev_header_d = prev_header_q;
+    curr_header_d = curr_header_q;
     header_from_lsu_d = header_from_lsu_q;
     best_fit_header_d = best_fit_header_q;
     best_fit_header_prev_d = best_fit_header_prev_q;
     smallest_diff_d = smallest_diff_q;
-    load_req_header = '0;
+
+    alloc_target_header_d = alloc_target_header_q;
     free_target_header_d = free_target_header_q;
-    right_header_d = right_header_q;
+    header_to_create_d = header_to_create_q;
+    header_to_adjust_link_d = header_to_adjust_link_q;
+
     does_merge_left = 0;
     does_merge_right = 0;
-    does_merge_both_sides_d = does_merge_both_sides_q;
-    merged_block_header = '0;
-    header_to_adjust_link_free = '0;
-    load_type_d = load_type_q;
+    does_merge_both_sides = 0;
+    right_header_d = right_header_q;
+    merged_block_header_d = merged_block_header_q;
 
     unique case (state_q)
       IDLE: begin
+        core_ready_o = 1;
+
         is_alloc_d = 0;
         size_to_allocate_d = '0;
         addr_to_free_d = '0;
-        req_to_lsu_o = '0;
-        alloc_target_header_d = '0;
-        header_to_create_d = '0;
-        header_to_adjust_link_d = '0;
+        core_op_d = CORE_ACQUIRE_LOCK;
+
+        load_type_d = SEARCH;
+
         curr_header_d = '0;
         prev_header_d = '0;
-        core_ready_o = 1;
         header_from_lsu_d = '0;
         best_fit_header_d = '0;
         best_fit_header_prev_d = '0;
         smallest_diff_d = {DATA_W{1'b1}};
+
+        alloc_target_header_d = '0;
         free_target_header_d = '0;
+        header_to_create_d = '0;
+        header_to_adjust_link_d = '0;
+
         right_header_d = '0;
-        load_type_d = SEARCH;
-        does_merge_both_sides_d = 0;
+        merged_block_header_d = '0;
 
         if (req_alloc_valid_i) begin
           is_alloc_d = is_alloc_i ? 1 : 0;
@@ -157,7 +194,10 @@ module falafel_core
           end
           FREE_RIGHT_HEADER: begin
             load_req_header.addr = curr_header_q.next_addr;
-            core_op_d = CORE_LOAD_RIGHT_HEADER;
+            if (core_op_q == CORE_MERGE_BOTH_SIDES)
+              core_op_d = CORE_LOAD_RIGHT_HEADER_FOR_MERGE_BOTH_SIDES;
+            else if (core_op_q == CORE_MERGE_RIGHT)
+              core_op_d = CORE_LOAD_RIGHT_HEADER_FOR_MERGE_RIGHT;
           end
           default: ;
         endcase
@@ -188,7 +228,7 @@ module falafel_core
         end
       end
       */
-      ALLOC_SEARCH_POS: begin
+      ALLOC_SEARCH_POS_BEST_FIT: begin
         core_ready_o = 1;
         if ((header_from_lsu_q.size >= size_to_allocate_q) &&
       ((header_from_lsu_q.size - size_to_allocate_q) < smallest_diff_q)) begin
@@ -204,39 +244,21 @@ module falafel_core
           load_type_d = SEARCH;
         end else begin
           if (best_fit_header_d.next_addr != '0) begin
-            header_to_adjust_link_d.addr = best_fit_header_prev_q.addr;
-            if (best_fit_header_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
-              state_d = REQ_ADJUST_ALLOCATED_HEADER;
-              alloc_target_header_d.addr = best_fit_header_q.addr;
-              alloc_target_header_d.size = size_to_allocate_q;  // TODO
-              alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr =
-                best_fit_header_q.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
-              header_to_create_d.size = best_fit_header_q.size - size_to_allocate_q;
-              header_to_create_d.next_addr = best_fit_header_q.next_addr;
-              header_to_adjust_link_d.next_addr = header_to_create_d.addr;
-            end else begin
-              alloc_target_header_d.next_addr = '0;
-              header_to_adjust_link_d.next_addr = best_fit_header_q.next_addr;
-              state_d = REQ_ADJUST_LINK;
-            end
+            set_headers_after_best_fit(.best_fit_header_i(best_fit_header_q),
+                                       .best_fit_header_prev_i(best_fit_header_prev_q),
+                                       .size_to_allocate_i(size_to_allocate_q),
+                                       .alloc_target_header_o(alloc_target_header_d),
+                                       .header_to_create_o(header_to_create_d),
+                                       .header_to_adjust_link_o(header_to_adjust_link_d),
+                                       .next_state_o(state_d));
           end else begin
-            header_to_adjust_link_d.addr = best_fit_header_prev_d.addr;
-            if (best_fit_header_d.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
-              state_d = REQ_ADJUST_ALLOCATED_HEADER;
-              alloc_target_header_d.addr = best_fit_header_d.addr;
-              alloc_target_header_d.size = size_to_allocate_q;  // TODO
-              alloc_target_header_d.next_addr = '0;
-              header_to_create_d.addr =
-                best_fit_header_d.addr + BLOCK_HEADER_SIZE + size_to_allocate_q;
-              header_to_create_d.size = best_fit_header_d.size - size_to_allocate_q;
-              header_to_create_d.next_addr = best_fit_header_d.next_addr;
-              header_to_adjust_link_d.next_addr = header_to_create_d.addr;
-            end else begin
-              alloc_target_header_d.next_addr = '0;
-              header_to_adjust_link_d.next_addr = best_fit_header_d.next_addr;
-              state_d = REQ_ADJUST_LINK;
-            end
+            set_headers_after_best_fit(.best_fit_header_i(best_fit_header_d),
+                                       .best_fit_header_prev_i(best_fit_header_prev_d),
+                                       .size_to_allocate_i(size_to_allocate_q),
+                                       .alloc_target_header_o(alloc_target_header_d),
+                                       .header_to_create_o(header_to_create_d),
+                                       .header_to_adjust_link_o(header_to_adjust_link_d),
+                                       .next_state_o(state_d));
           end
         end
       end
@@ -254,13 +276,21 @@ module falafel_core
           if (is_alloc_q) begin
             send_req_to_lsu(.header_i(header_to_create_q), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
                             .req_to_lsu_o(req_to_lsu_o));
+            core_op_d = CORE_CREATE_NEW_HEADER;
+
+          end else if ((core_op_q == CORE_MERGE_BOTH_SIDES) ||
+              (core_op_q == CORE_MERGE_RIGHT) ||
+              (core_op_q == CORE_MERGE_LEFT)) begin
+            send_req_to_lsu(.header_i(merged_block_header_q), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
+                            .req_to_lsu_o(req_to_lsu_o));
+            core_op_d = core_op_q;
           end else begin
             send_req_to_lsu(.header_i(header_to_create_q), .lsu_op_i(EDIT_NEXT_ADDR),
                             .req_to_lsu_o(req_to_lsu_o));
+            core_op_d = CORE_CREATE_NEW_HEADER;
           end
 
-          state_d   = WAIT_RSP_FROM_LSU;
-          core_op_d = CORE_CREATE_NEW_HEADER;
+          state_d = WAIT_RSP_FROM_LSU;
         end
       end
       REQ_ADJUST_LINK: begin
@@ -293,18 +323,21 @@ module falafel_core
           == curr_header_q.next_addr);
         does_merge_left = (curr_header_q.addr + BLOCK_HEADER_SIZE + curr_header_q.size
           == addr_to_free_q);
-        does_merge_both_sides_d = does_merge_right && does_merge_left;
+        does_merge_both_sides = does_merge_right && does_merge_left;
 
-        if (does_merge_both_sides_d) begin
+        if (does_merge_both_sides) begin
+          core_op_d = CORE_MERGE_BOTH_SIDES;
           state_d = REQ_LOAD_HEADER;
           load_type_d = FREE_RIGHT_HEADER;
         end else if (does_merge_right) begin
+          core_op_d = CORE_MERGE_RIGHT;
           state_d = REQ_LOAD_HEADER;
           load_type_d = FREE_RIGHT_HEADER;
           header_to_adjust_link_d = curr_header_q;
           header_to_adjust_link_d.next_addr = addr_to_free_q;
         end else if (does_merge_left) begin
-          state_d = REQ_FREE_MERGE_LEFT_HEADER;
+          core_op_d = CORE_MERGE_LEFT;
+          state_d   = FREE_MERGE_NEIGHBOR;
         end else if (!does_merge_left && !does_merge_right) begin
           header_to_create_d.addr = addr_to_free_q;
           header_to_create_d.next_addr = header_from_lsu_q.next_addr;
@@ -313,44 +346,34 @@ module falafel_core
           state_d = REQ_CREATE_NEW_HEADER;
         end
       end
-      REQ_FREE_MERGE_BOTH_SIDES: begin
-        right_header_d = header_from_lsu_q;
-        merged_block_header.addr = curr_header_q.addr;
-        merged_block_header.next_addr = right_header_d.next_addr;
-        merged_block_header.size =
-          curr_header_q.size + right_header_d.size + free_target_header_q.size
-          + 2*BLOCK_HEADER_SIZE;
-        if (lsu_ready_i) begin
-          send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
-                          .req_to_lsu_o(req_to_lsu_o));
-          state_d   = WAIT_RSP_FROM_LSU;
-          core_op_d = CORE_MERGE_BOTH_SIDES;
-        end
-      end
-      REQ_FREE_MERGE_RIGHT_HEADER: begin
-        right_header_d = header_from_lsu_q;
-        merged_block_header.addr = addr_to_free_q;
-        merged_block_header.next_addr = right_header_d.next_addr;
-        merged_block_header.size =
-          right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;
-        if (lsu_ready_i) begin
-          send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
-                          .req_to_lsu_o(req_to_lsu_o));
-          state_d   = WAIT_RSP_FROM_LSU;
-          core_op_d = CORE_MERGE_RIGHT;
-        end
-      end
-      REQ_FREE_MERGE_LEFT_HEADER: begin
-        merged_block_header.addr = curr_header_q.addr;
-        merged_block_header.next_addr = curr_header_q.next_addr;
-        merged_block_header.size =
-          curr_header_q.size + free_target_header_q.size + BLOCK_HEADER_SIZE;
-        if (lsu_ready_i) begin
-          send_req_to_lsu(.header_i(merged_block_header), .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR),
-                          .req_to_lsu_o(req_to_lsu_o));
-          state_d   = WAIT_RSP_FROM_LSU;
-          core_op_d = CORE_MERGE_LEFT;
-        end
+      FREE_MERGE_NEIGHBOR: begin
+        unique case (core_op_q)
+          CORE_MERGE_BOTH_SIDES: begin
+            right_header_d = header_from_lsu_q;
+            merged_block_header_d.addr = curr_header_q.addr;
+            merged_block_header_d.next_addr = right_header_d.next_addr;
+            merged_block_header_d.size =
+              curr_header_q.size + right_header_d.size + free_target_header_q.size
+              + 2*BLOCK_HEADER_SIZE;
+          end
+          CORE_MERGE_RIGHT: begin
+            right_header_d = header_from_lsu_q;
+            merged_block_header_d.addr = addr_to_free_q;
+            merged_block_header_d.next_addr = right_header_d.next_addr;
+            merged_block_header_d.size =
+              right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;
+          end
+          CORE_MERGE_LEFT: begin
+            merged_block_header_d.addr = curr_header_q.addr;
+            merged_block_header_d.next_addr = curr_header_q.next_addr;
+            merged_block_header_d.size =
+              curr_header_q.size + free_target_header_q.size + BLOCK_HEADER_SIZE;
+          end
+          default: ;
+        endcase
+
+        core_op_d = core_op_q;
+        state_d   = REQ_CREATE_NEW_HEADER;
       end
       REQ_RELEASE_LOCK: begin
         send_req_to_lsu(.header_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
@@ -369,7 +392,7 @@ module falafel_core
             CORE_LOAD_HEADER: begin
               header_from_lsu_d = rsp_from_lsu_i.header;
               if (is_alloc_q) begin
-                state_d = ALLOC_SEARCH_POS;
+                state_d = ALLOC_SEARCH_POS_BEST_FIT;
               end else begin
                 state_d = FREE_SEARCH_POS;
               end
@@ -378,13 +401,15 @@ module falafel_core
               header_from_lsu_d = rsp_from_lsu_i.header;
               state_d = FREE_CHECK_NEIGHBORS;
             end
-            CORE_LOAD_RIGHT_HEADER: begin
+            CORE_LOAD_RIGHT_HEADER_FOR_MERGE_BOTH_SIDES: begin
               header_from_lsu_d = rsp_from_lsu_i.header;
-              if (does_merge_both_sides_q) begin
-                state_d = REQ_FREE_MERGE_BOTH_SIDES;
-              end else begin
-                state_d = REQ_FREE_MERGE_RIGHT_HEADER;
-              end
+              state_d = FREE_MERGE_NEIGHBOR;
+              core_op_d = CORE_MERGE_BOTH_SIDES;
+            end
+            CORE_LOAD_RIGHT_HEADER_FOR_MERGE_RIGHT: begin
+              header_from_lsu_d = rsp_from_lsu_i.header;
+              state_d = FREE_MERGE_NEIGHBOR;
+              core_op_d = CORE_MERGE_RIGHT;
             end
             CORE_MERGE_RIGHT: state_d = REQ_ADJUST_LINK;
             CORE_MERGE_LEFT: state_d = REQ_RELEASE_LOCK;
@@ -407,39 +432,45 @@ module falafel_core
       is_alloc_q <= 0;
       size_to_allocate_q <= '0;
       addr_to_free_q <= '0;
-      alloc_target_header_q <= '0;
-      header_to_create_q <= '0;
-      header_to_adjust_link_q <= '0;
+
+      core_op_q <= CORE_RELEASE;
+      load_type_q <= SEARCH;
+      header_from_lsu_q <= '0;
+
       curr_header_q <= 0;
       prev_header_q <= 0;
-      header_from_lsu_q <= '0;
-      core_op_q <= CORE_RELEASE;
       best_fit_header_q <= '0;
       best_fit_header_prev_q <= '0;
       smallest_diff_q <= '0;
+
+      alloc_target_header_q <= '0;
       free_target_header_q <= '0;
+      header_to_create_q <= '0;
+      header_to_adjust_link_q <= '0;
       right_header_q <= '0;
-      load_type_q <= SEARCH;
-      does_merge_both_sides_q <= 0;
+      merged_block_header_q <= '0;
     end else begin
       state_q <= state_d;
       is_alloc_q <= is_alloc_d;
       size_to_allocate_q <= size_to_allocate_d;
       addr_to_free_q <= addr_to_free_d;
-      alloc_target_header_q <= alloc_target_header_d;
-      header_to_create_q <= header_to_create_d;
-      header_to_adjust_link_q <= header_to_adjust_link_d;
+
+      core_op_q <= core_op_d;
+      load_type_q <= load_type_d;
+      header_from_lsu_q <= header_from_lsu_d;
+
       curr_header_q <= curr_header_d;
       prev_header_q <= prev_header_d;
-      core_op_q <= core_op_d;
-      header_from_lsu_q <= header_from_lsu_d;
       best_fit_header_q <= best_fit_header_d;
       best_fit_header_prev_q <= best_fit_header_prev_d;
       smallest_diff_q <= smallest_diff_d;
+
+      alloc_target_header_q <= alloc_target_header_d;
       free_target_header_q <= free_target_header_d;
+      header_to_create_q <= header_to_create_d;
+      header_to_adjust_link_q <= header_to_adjust_link_d;
       right_header_q <= right_header_d;
-      load_type_q <= load_type_d;
-      does_merge_both_sides_q <= does_merge_both_sides_d;
+      merged_block_header_q <= merged_block_header_d;
     end
   end
 

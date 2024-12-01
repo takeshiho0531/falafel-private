@@ -740,6 +740,8 @@ async def test_falafel_free_merge_left(dut):
     # grant merge left update size
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
+    await RisingEdge(clk)
+    await FallingEdge(clk)
     # assert dut.mem_req_val_o == 1 # TODO
     assert dut.mem_req_is_write_o == 1
     assert dut.mem_req_addr_o == 500, int(dut.mem_req_addr_o)
