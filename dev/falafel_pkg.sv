@@ -5,14 +5,19 @@
 package falafel_pkg;
 
   typedef enum integer {
+    FIRST_FIT,
+    BEST_FIT
+  } alloc_strategy_t;
+
+  typedef enum integer {
     LOCK,
     UNLOCK,
     LOAD,
     EDIT_SIZE_AND_NEXT_ADDR,
     EDIT_NEXT_ADDR
-  } req_lsu_op_e;
+  } req_lsu_op_t;
 
-    localparam unsigned DATA_W = 64;
+  localparam unsigned DATA_W = 64;
 
   typedef struct packed {
     logic [DATA_W-1:0] addr;
@@ -28,7 +33,7 @@ package falafel_pkg;
   typedef struct packed {
     header_t header;
     logic val;
-    req_lsu_op_e lsu_op;
+    req_lsu_op_t lsu_op;
   } header_req_t;
 
   typedef struct packed {
@@ -36,7 +41,6 @@ package falafel_pkg;
     logic val;
   } header_rsp_t;
 
-  typedef logic [DATA_W-1:0] word_t;
   localparam logic [DATA_W-1:0] BLOCK_NEXT_ADDR_OFFSET = DATA_W / 8;
   localparam logic [DATA_W-1:0] EMPTY_KEY = '0;
   localparam logic [DATA_W-1:0] BLOCK_HEADER_SIZE = 64'($bits(header_net_t)) / 64'd8;

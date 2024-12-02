@@ -5,6 +5,7 @@ module falafel_core
 (
     input logic clk_i,
     input logic rst_ni,
+    input alloc_strategy_t config_alloc_strategy_i,
     input logic is_alloc_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
     input logic [DATA_W-1:0] addr_to_free_i,
@@ -20,6 +21,7 @@ module falafel_core
     REQ_ACQUIRE_LOCK,
     REQ_RELEASE_LOCK,
     REQ_LOAD_HEADER,
+    ALLOC_SEARCH_POS_FIRST_FIT,
     ALLOC_SEARCH_POS_BEST_FIT,
     REQ_ADJUST_ALLOCATED_HEADER,
     FREE_SEARCH_POS,
@@ -63,6 +65,7 @@ module falafel_core
 
   header_t prev_header_d, prev_header_q;
   header_t curr_header_d, curr_header_q;
+  header_t first_fit_header, first_fit_header_prev;
   header_t best_fit_header_d, best_fit_header_q;
   header_t best_fit_header_prev_d, best_fit_header_prev_q;
   logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
@@ -77,7 +80,7 @@ module falafel_core
   header_t merged_block_header_d, merged_block_header_q;
 
 
-  task automatic send_req_to_lsu(input header_t header_i, input req_lsu_op_e lsu_op_i,
+  task automatic send_req_to_lsu(input header_t header_i, input req_lsu_op_t lsu_op_i,
                                  output header_req_t req_to_lsu_o);
     begin
       req_to_lsu_o.header = header_i;
@@ -86,25 +89,25 @@ module falafel_core
     end
   endtask
 
-  task automatic set_headers_after_best_fit(
-      input header_t best_fit_header_i, input header_t best_fit_header_prev_i,
+  task automatic set_headers_after_fit(
+      input header_t fit_header_i, input header_t fit_header_prev_i,
       input logic [DATA_W-1:0] size_to_allocate_i, output header_t alloc_target_header_o,
       output header_t header_to_create_o, output header_t header_to_adjust_link_o,
       output core_state_e next_state_o);
     begin
-      header_to_adjust_link_o.addr = best_fit_header_prev_i.addr;
-      if (best_fit_header_i.size - size_to_allocate_i >= MIN_ALLOC_SIZE) begin
+      header_to_adjust_link_o.addr = fit_header_prev_i.addr;
+      if (fit_header_i.size - size_to_allocate_i >= MIN_ALLOC_SIZE) begin
         next_state_o = REQ_ADJUST_ALLOCATED_HEADER;
-        alloc_target_header_o.addr = best_fit_header_i.addr;
+        alloc_target_header_o.addr = fit_header_i.addr;
         alloc_target_header_o.size = size_to_allocate_i;  // TODO
         alloc_target_header_o.next_addr = '0;
-        header_to_create_o.addr = best_fit_header_i.addr + BLOCK_HEADER_SIZE + size_to_allocate_i;
-        header_to_create_o.size = best_fit_header_i.size - size_to_allocate_i;
-        header_to_create_o.next_addr = best_fit_header_i.next_addr;
+        header_to_create_o.addr = fit_header_i.addr + BLOCK_HEADER_SIZE + size_to_allocate_i;
+        header_to_create_o.size = fit_header_i.size - size_to_allocate_i;
+        header_to_create_o.next_addr = fit_header_i.next_addr;
         header_to_adjust_link_o.next_addr = header_to_create_o.addr;
       end else begin
         alloc_target_header_o.next_addr = '0;
-        header_to_adjust_link_o.next_addr = best_fit_header_i.next_addr;
+        header_to_adjust_link_o.next_addr = fit_header_i.next_addr;
         next_state_o = REQ_ADJUST_LINK;
       end
     end
@@ -126,6 +129,7 @@ module falafel_core
     prev_header_d = prev_header_q;
     curr_header_d = curr_header_q;
     header_from_lsu_d = header_from_lsu_q;
+    first_fit_header = '0;
     best_fit_header_d = best_fit_header_q;
     best_fit_header_prev_d = best_fit_header_prev_q;
     smallest_diff_d = smallest_diff_q;
@@ -206,28 +210,24 @@ module falafel_core
           state_d = WAIT_RSP_FROM_LSU;
         end
       end
-      /*
-      CMP_SIZE: begin
+      ALLOC_SEARCH_POS_FIRST_FIT: begin
         core_ready_o = 1;
         if (header_from_lsu_q.size < size_to_allocate_q) begin
           prev_header_d = header_from_lsu_q;
           curr_header_d.addr = header_from_lsu_q.next_addr;
           state_d = REQ_LOAD_HEADER;
+          load_type_d = SEARCH;
         end else begin
-          header_prev_d.addr = prev_header_q.addr;
-          if (header_from_lsu_q.size - size_to_allocate_q >= MIN_ALLOC_SIZE) begin
-            state_d = REQ_INSERT_NEW_HEADER;
-            header_to_insert_d.addr = header_from_lsu_q.addr + 64 + size_to_allocate_q;  // TODO
-            header_to_insert_d.size = header_from_lsu_q.size - size_to_allocate_q;
-            header_to_insert_d.next_addr = header_from_lsu_q.next_addr;
-            header_prev_d.next_addr = header_to_insert_d.addr;
-          end else begin
-            header_prev_d.next_addr = header_from_lsu_q.next_addr;
-            state_d = REQ_DELETE_HEADER;
-          end
+          first_fit_header = header_from_lsu_q;
+          first_fit_header_prev = prev_header_q;
+          set_headers_after_fit(
+              .fit_header_i(first_fit_header), .fit_header_prev_i(first_fit_header_prev),
+              .size_to_allocate_i(size_to_allocate_q),
+              .alloc_target_header_o(alloc_target_header_d),
+              .header_to_create_o(header_to_create_d),
+              .header_to_adjust_link_o(header_to_adjust_link_d), .next_state_o(state_d));
         end
       end
-      */
       ALLOC_SEARCH_POS_BEST_FIT: begin
         core_ready_o = 1;
         if ((header_from_lsu_q.size >= size_to_allocate_q) &&
@@ -244,21 +244,19 @@ module falafel_core
           load_type_d = SEARCH;
         end else begin
           if (best_fit_header_d.next_addr != '0) begin
-            set_headers_after_best_fit(.best_fit_header_i(best_fit_header_q),
-                                       .best_fit_header_prev_i(best_fit_header_prev_q),
-                                       .size_to_allocate_i(size_to_allocate_q),
-                                       .alloc_target_header_o(alloc_target_header_d),
-                                       .header_to_create_o(header_to_create_d),
-                                       .header_to_adjust_link_o(header_to_adjust_link_d),
-                                       .next_state_o(state_d));
+            set_headers_after_fit(
+                .fit_header_i(best_fit_header_q), .fit_header_prev_i(best_fit_header_prev_q),
+                .size_to_allocate_i(size_to_allocate_q),
+                .alloc_target_header_o(alloc_target_header_d),
+                .header_to_create_o(header_to_create_d),
+                .header_to_adjust_link_o(header_to_adjust_link_d), .next_state_o(state_d));
           end else begin
-            set_headers_after_best_fit(.best_fit_header_i(best_fit_header_d),
-                                       .best_fit_header_prev_i(best_fit_header_prev_d),
-                                       .size_to_allocate_i(size_to_allocate_q),
-                                       .alloc_target_header_o(alloc_target_header_d),
-                                       .header_to_create_o(header_to_create_d),
-                                       .header_to_adjust_link_o(header_to_adjust_link_d),
-                                       .next_state_o(state_d));
+            set_headers_after_fit(
+                .fit_header_i(best_fit_header_d), .fit_header_prev_i(best_fit_header_prev_d),
+                .size_to_allocate_i(size_to_allocate_q),
+                .alloc_target_header_o(alloc_target_header_d),
+                .header_to_create_o(header_to_create_d),
+                .header_to_adjust_link_o(header_to_adjust_link_d), .next_state_o(state_d));
           end
         end
       end
@@ -392,7 +390,11 @@ module falafel_core
             CORE_LOAD_HEADER: begin
               header_from_lsu_d = rsp_from_lsu_i.header;
               if (is_alloc_q) begin
-                state_d = ALLOC_SEARCH_POS_BEST_FIT;
+                if (config_alloc_strategy_i == FIRST_FIT) begin
+                  state_d = ALLOC_SEARCH_POS_FIRST_FIT;
+                end else if (config_alloc_strategy_i == BEST_FIT) begin
+                  state_d = ALLOC_SEARCH_POS_BEST_FIT;
+                end
               end else begin
                 state_d = FREE_SEARCH_POS;
               end

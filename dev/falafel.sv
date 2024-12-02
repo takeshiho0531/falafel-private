@@ -6,6 +6,7 @@ module falafel
 (
     input logic clk_i,
     input logic rst_ni,
+    input alloc_strategy_t config_alloc_strategy_i,
     input logic is_alloc_i,
     input logic [DATA_W-1:0] addr_to_free_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
@@ -34,6 +35,7 @@ module falafel
   falafel_core i_core (
       .clk_i,
       .rst_ni,
+      .config_alloc_strategy_i,
       .is_alloc_i,
       .addr_to_free_i,
       .size_to_allocate_i,
