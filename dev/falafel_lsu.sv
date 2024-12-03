@@ -47,12 +47,12 @@ module falafel_lsu
     LSU_LOAD_NEXT_ADDR,
     LSU_STORE_SIZE,
     LSU_STORE_NEXT_ADDR
-  } lsu_op_e;
+  } lsu_op_t;
 
   lsu_state_e state_q, state_d;
   header_req_t req_header_q, req_header_d;
   header_rsp_t rsp_header_q, rsp_header_d;
-  lsu_op_e lsu_op_q, lsu_op_d;
+  lsu_op_t lsu_op_q, lsu_op_d;
   logic [DATA_W-1:0] load_addr_q, load_addr_d;
 
   task automatic send_mem_load_req(
