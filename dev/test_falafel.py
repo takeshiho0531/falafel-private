@@ -1,6 +1,16 @@
 import cocotb
-from cocotb.triggers import FallingEdge, ReadOnly, Timer, RisingEdge
+from cocotb.triggers import FallingEdge, RisingEdge
 from cocotb.clock import Clock
+
+from monitor import monitor_req_from_lsu, monitor_falafel_ready
+from free_list import LinkedList
+from mem_rsp import (
+    send_req_to_allocate,
+    send_req_to_free,
+    grant_lock,
+    send_load_rsp_from_mem,
+    send_rsp_from_mem,
+)
 
 CLK_PERIOD = 10
 MAX_SIM_TIME = 15000
@@ -19,188 +29,6 @@ async def reset_dut(dut, clk):
 
     await FallingEdge(clk)
     await FallingEdge(clk)
-
-
-@cocotb.coroutine
-async def monitor_req_from_lsu(
-    dut, expected_addr=None, expected_data=None, expected_is_write=0
-):
-    while True:
-        await ReadOnly()
-        if dut.mem_req_val_o.value == 1:
-            if expected_addr is not None:
-                assert dut.mem_req_addr_o == expected_addr, int(
-                    dut.mem_req_addr_o
-                )  # noqa
-            if expected_data is not None:
-                assert dut.mem_req_data_o == expected_data, int(
-                    dut.mem_req_data_o
-                )  # noqa
-            if expected_is_write != 0:
-                assert dut.mem_req_is_write_o == 1
-            break
-        await Timer(1, units="ns")
-
-
-@cocotb.coroutine
-async def monitor_falafel_ready(dut):
-    while True:
-        await ReadOnly()
-        if dut.mem_rsp_rdy_o.value == 1:
-            dut._log.info("mem_rsp_rdy_o is now 1")
-            break
-        await Timer(1, units="ns")
-
-
-async def send_req_to_allocate(dut, clk):
-    await FallingEdge(clk)
-    dut.is_alloc_i.setimmediatevalue(1)
-    dut.req_alloc_valid_i.setimmediatevalue(1)
-    dut.size_to_allocate_i.setimmediatevalue(200)
-    await FallingEdge(clk)
-    await RisingEdge(clk)
-    dut.req_alloc_valid_i.setimmediatevalue(0)
-
-
-async def send_req_to_free(dut, clk, addr_to_free):
-    await FallingEdge(clk)
-    dut.is_alloc_i.setimmediatevalue(0)
-    dut.req_alloc_valid_i.setimmediatevalue(1)
-    dut.addr_to_free_i.setimmediatevalue(addr_to_free)
-    await FallingEdge(clk)
-    await RisingEdge(clk)
-    dut.req_alloc_valid_i.setimmediatevalue(0)
-
-
-class Node:
-    def __init__(self, addr, size, next_addr=None):
-        self.addr = addr
-        self.size = size
-        self.next_addr = next_addr
-
-    def __str__(self):
-        return f"Node(addr={self.addr}, size={self.size}, next_addr={self.next_addr})"  # noqa
-
-
-class LinkedList:
-    def __init__(self):
-        self.nodes = {}
-
-    def add_node(self, addr, size, next_addr=None):
-        node = Node(addr, size, next_addr)
-        self.nodes[addr] = node
-
-    def update_size(self, addr, size):
-        if addr in self.nodes:
-            self.nodes[addr].size = size
-        else:
-            print(f"Node with address {addr} does not exist.")
-
-    def update_next_addr(self, addr, next_addr):
-        if addr in self.nodes:
-            self.nodes[addr].next_addr = next_addr
-        else:
-            print(f"Node with address {addr} does not exist.")
-
-    def get_node(self, addr):
-        if addr in self.nodes:
-            node = self.nodes[addr]
-            return node.size, node.next_addr
-        else:
-            return None, None
-
-    def print_list(self):
-        print("LinkedList contents:")
-        for addr, node in sorted(self.nodes.items()):
-            print(
-                f"Addr: {addr}, Size: {node.size}, Next Addr: {node.next_addr}"
-            )  # noqa
-
-
-async def grant_store(dut, clk):
-    dut.mem_req_rdy_i.setimmediatevalue(0)
-    dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(0)
-    await FallingEdge(clk)
-    dut.mem_rsp_val_i.setimmediatevalue(0)
-    dut.mem_req_rdy_i.setimmediatevalue(1)
-
-
-async def send_rsp_from_mem(
-    dut, clk, addr, linked_list: LinkedList, data, expected_next_addr=None
-):
-    if (addr - 8) in linked_list.nodes:
-        # store updated only next_addr
-        linked_list.update_next_addr(addr - 8, data)
-        await FallingEdge(clk)
-        await grant_store(dut, clk)
-    elif (addr) in linked_list.nodes:
-        # store updated size
-        linked_list.update_size(addr, data)
-        await FallingEdge(clk)
-        await grant_store(dut, clk)
-        assert dut.mem_req_data_o == expected_next_addr, int(dut.mem_req_data_o)  # noqa
-        linked_list.update_next_addr(addr, int(dut.mem_req_data_o))
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await grant_store(dut, clk)
-    else:  # store updated size
-        linked_list.add_node(addr, data)
-        await FallingEdge(clk)
-        await grant_store(dut, clk)
-        assert dut.mem_req_data_o == expected_next_addr, int(dut.mem_req_data_o)  # noqa
-        linked_list.update_next_addr(addr, int(dut.mem_req_data_o))
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await grant_store(dut, clk)
-
-    await FallingEdge(clk)
-    dut.mem_req_rdy_i.setimmediatevalue(1)
-    await FallingEdge(clk)
-
-
-async def send_load_rsp_from_mem(dut, clk, addr, linked_list: LinkedList):
-    if (dut.mem_req_addr_o.value.integer - 8) in linked_list.nodes:
-        await send_next_addr_from_mem(dut, clk, addr, linked_list)
-    else:
-        await FallingEdge(clk)
-        await send_size_from_mem(dut, clk, addr, linked_list)
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await FallingEdge(clk)
-        await send_next_addr_from_mem(dut, clk, addr, linked_list)
-
-    await FallingEdge(clk)
-    dut.mem_req_rdy_i.setimmediatevalue(1)
-    await FallingEdge(clk)
-
-
-async def send_size_from_mem(dut, clk, addr, linked_list: LinkedList):
-    dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(linked_list.get_node(addr)[0])
-    await FallingEdge(clk)
-    dut.mem_rsp_val_i.setimmediatevalue(0)
-
-
-async def send_next_addr_from_mem(dut, clk, addr, linked_list: LinkedList):
-    dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(linked_list.get_node(addr)[1])
-    await FallingEdge(clk)
-    dut.mem_rsp_val_i.setimmediatevalue(0)
-
-
-async def grant_lock(dut, clk):
-    await FallingEdge(clk)
-    await RisingEdge(clk)
-    await FallingEdge(clk)
-    dut.mem_req_rdy_i.setimmediatevalue(0)
-    dut.mem_rsp_val_i.setimmediatevalue(1)
-    dut.mem_rsp_data_i.setimmediatevalue(0)
-    await FallingEdge(clk)
-    dut.mem_rsp_val_i.setimmediatevalue(0)
-    dut.mem_req_rdy_i.setimmediatevalue(1)
 
 
 @cocotb.test()
