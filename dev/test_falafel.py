@@ -8,8 +8,8 @@ from mem_rsp import (
     send_req_to_allocate,
     send_req_to_free,
     grant_lock,
-    send_store_rsp_from_mem,
-    load_headers,
+    handle_loading_headers,
+    handle_storing_headers,
 )
 
 CLK_PERIOD = 10
@@ -74,66 +74,45 @@ async def test_falafel_alloc_first_fit(dut):
     linked_list.print_list()
 
     # loading first - third header
-    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])
+    await handle_loading_headers(
+        dut, clk, linked_list, expected_addresses=[16, 300, 500]
+    )  # noqa
 
     print("-----finish loading / finding fit-----")
 
     # updating the allocated block (storing size & next_addr)
-    expected_addr = 500
-    expected_data = 200
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=0,  # noqa
+        expected_addr=500,
+        expected_data=200,
+        expected_next_addr=0,
     )
     print("-----Granted updating the allocated block-----")
     linked_list.print_list()
 
     # creating the new block (storing size & next_addr)
-    expected_addr = 716
-    expected_data = 100
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=2000,  # noqa
+        expected_addr=716,
+        expected_data=100,
+        expected_next_addr=2000,
     )
     print("-----Granted creating the new block-----")
     linked_list.print_list()
 
     # adjusting the link
-    expected_addr = 308
-    expected_data = 716
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=0
-        )  # noqa
+    await handle_storing_headers(
+        dut,
+        clk,
+        linked_list,
+        expected_addr=308,
+        expected_data=716,
+        expected_next_addr=0,
     )
-    await monitor_task_req_from_lsu
-    await send_store_rsp_from_mem(
-        dut, clk, expected_addr, linked_list, expected_data
-    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -191,68 +170,45 @@ async def test_falafel_alloc_best_fit(dut):
     linked_list.print_list()
 
     # loading first - forth (last) header
-    await load_headers(
+    await handle_loading_headers(
         dut, clk, linked_list, expected_addresses=[16, 300, 500, 2000]
     )  # noqa
 
     print("-----finish loading / finding fit-----")
 
     # updating the allocated block (storing size & next_addr)
-    expected_addr = 2000
-    expected_data = 200
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=0,  # noqa
+        expected_addr=2000,
+        expected_data=200,
+        expected_next_addr=0,
     )
     print("-----Granted updating the allocated block-----")
     linked_list.print_list()
 
     # creating the new block (storing size & next_addr)
-    expected_addr = 2216
-    expected_data = 99
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=0,  # noqa
+        expected_addr=2216,
+        expected_data=99,
+        expected_next_addr=0,
     )
     print("-----Granted creating the new block-----")
     linked_list.print_list()
 
     # adjusting the link
-    expected_addr = 508
-    expected_data = 2216
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=0
-        )  # noqa
+    await handle_storing_headers(
+        dut,
+        clk,
+        linked_list,
+        expected_addr=508,
+        expected_data=2216,
+        expected_next_addr=0,
     )
-    await monitor_task_req_from_lsu
-    await send_store_rsp_from_mem(
-        dut, clk, expected_addr, linked_list, expected_data
-    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -310,50 +266,41 @@ async def test_falafel_free_merge_right(dut):
     linked_list.print_list()
 
     # loading first - third header
-    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
+    await handle_loading_headers(
+        dut, clk, linked_list, expected_addresses=[16, 300, 500]
+    )  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    await load_headers(dut, clk, linked_list, expected_addresses=[2000])
+    await handle_loading_headers(
+        dut, clk, linked_list=linked_list, expected_addresses=[2000]
+    )
 
     # loading the right header
-    await load_headers(dut, clk, linked_list, expected_addresses=[2216])
+    await handle_loading_headers(
+        dut, clk, linked_list=linked_list, expected_addresses=[2216]
+    )
 
     # updating the allocated block (storing size & next_addr)
-    expected_addr = 2000
-    expected_data = 299
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=0,  # noqa
+        expected_addr=2000,
+        expected_data=299,
+        expected_next_addr=0,
     )
-    print("-----Granted updating the allocated block-----")
-    linked_list.print_list()
 
     # adjusting the link
-    expected_addr = 508
-    expected_data = 2000
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=0
-        )  # noqa
+    await handle_storing_headers(
+        dut,
+        clk,
+        linked_list,
+        expected_addr=508,
+        expected_data=2000,
+        expected_next_addr=0,
     )
-    await monitor_task_req_from_lsu
-    await send_store_rsp_from_mem(
-        dut, clk, expected_addr, linked_list, expected_data
-    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -412,31 +359,25 @@ async def test_falafel_free_merge_left(dut):
     linked_list.print_list()
 
     # loading first - third header
-    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
+    await handle_loading_headers(
+        dut, clk, linked_list, expected_addresses=[16, 300, 500]
+    )  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    await load_headers(dut, clk, linked_list, expected_addresses=[800])
+    await handle_loading_headers(
+        dut, clk, linked_list=linked_list, expected_addresses=[800]
+    )
 
     # creating a new (merged) block (size & next_addr)
-    expected_addr = 500
-    expected_data = 800
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=2000,  # noqa
+        expected_addr=500,
+        expected_data=800,
+        expected_next_addr=2000,
     )
     print("-----Granted creating a block-----")
     linked_list.print_list()
@@ -495,34 +436,30 @@ async def test_falafel_free_merge_both_sides(dut):
     print("-----Start freeing-----")
     linked_list.print_list()
 
-    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
+    await handle_loading_headers(
+        dut, clk, linked_list, expected_addresses=[16, 300, 500]
+    )  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    await load_headers(dut, clk, linked_list, expected_addresses=[800])
+    await handle_loading_headers(
+        dut, clk, linked_list=linked_list, expected_addresses=[800]
+    )
 
     # loading the right header
-    await load_headers(dut, clk, linked_list, expected_addresses=[2000])
+    await handle_loading_headers(
+        dut, clk, linked_list=linked_list, expected_addresses=[2000]
+    )
 
     # creating a new (merged) block (size & next_addr)
-    expected_addr = 500
-    expected_data = 1799
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
-            dut, expected_addr, expected_data, expected_is_write=1
-        )  # noqa
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_store_rsp_from_mem(
+    await handle_storing_headers(
         dut,
         clk,
-        expected_addr,
         linked_list,
-        expected_data,
-        expected_next_addr=0,  # noqa
+        expected_addr=500,
+        expected_data=1799,
+        expected_next_addr=0,
     )
     print("-----Granted creating a block-----")
     linked_list.print_list()

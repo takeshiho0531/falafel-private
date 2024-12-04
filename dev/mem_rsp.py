@@ -1,4 +1,4 @@
-from cocotb.triggers import FallingEdge, RisingEdge
+from cocotb.triggers import FallingEdge
 import cocotb
 
 from free_list import LinkedList
@@ -11,7 +11,6 @@ async def send_req_to_allocate(dut, clk):
     dut.req_alloc_valid_i.setimmediatevalue(1)
     dut.size_to_allocate_i.setimmediatevalue(200)
     await FallingEdge(clk)
-    await RisingEdge(clk)
     dut.req_alloc_valid_i.setimmediatevalue(0)
 
 
@@ -21,7 +20,6 @@ async def send_req_to_free(dut, clk, addr_to_free):
     dut.req_alloc_valid_i.setimmediatevalue(1)
     dut.addr_to_free_i.setimmediatevalue(addr_to_free)
     await FallingEdge(clk)
-    await RisingEdge(clk)
     dut.req_alloc_valid_i.setimmediatevalue(0)
 
 
@@ -34,7 +32,7 @@ async def grant_store(dut, clk):
     dut.mem_req_rdy_i.setimmediatevalue(1)
 
 
-async def load_headers(dut, clk, linked_list, expected_addresses):
+async def handle_loading_headers(dut, clk, linked_list, expected_addresses):
     for expected_addr in expected_addresses:
         monitor_task_req_from_lsu = cocotb.start_soon(
             monitor_req_from_lsu(dut, expected_addr=expected_addr)
@@ -42,6 +40,22 @@ async def load_headers(dut, clk, linked_list, expected_addresses):
         await monitor_task_req_from_lsu
         await FallingEdge(clk)
         await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+
+
+async def handle_storing_headers(
+    dut, clk, linked_list, expected_addr, expected_data, expected_next_addr
+):
+    monitor_task_req_from_lsu = cocotb.start_soon(
+        monitor_req_from_lsu(
+            dut, expected_addr=expected_addr, expected_data=expected_data
+        )
+    )
+    await monitor_task_req_from_lsu
+    await FallingEdge(clk)
+    await FallingEdge(clk)
+    await send_store_rsp_from_mem(
+        dut, clk, expected_addr, linked_list, expected_data, expected_next_addr
+    )
 
 
 async def send_store_rsp_from_mem(
@@ -111,7 +125,6 @@ async def send_next_addr_from_mem(dut, clk, addr, linked_list: LinkedList):
 
 async def grant_lock(dut, clk):
     await FallingEdge(clk)
-    await RisingEdge(clk)
     await FallingEdge(clk)
     dut.mem_req_rdy_i.setimmediatevalue(0)
     dut.mem_rsp_val_i.setimmediatevalue(1)
