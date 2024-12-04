@@ -8,8 +8,8 @@ from mem_rsp import (
     send_req_to_allocate,
     send_req_to_free,
     grant_lock,
-    send_load_rsp_from_mem,
-    send_rsp_from_mem,
+    send_store_rsp_from_mem,
+    load_headers,
 )
 
 CLK_PERIOD = 10
@@ -73,35 +73,8 @@ async def test_falafel_alloc_first_fit(dut):
     print("-----Start allocation-----")
     linked_list.print_list()
 
-    # loading first header
-    expected_addr = 16
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the second header
-    expected_addr = 300
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the third header
-    expected_addr = 500
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    # loading first - third header
+    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])
 
     print("-----finish loading / finding fit-----")
 
@@ -116,7 +89,7 @@ async def test_falafel_alloc_first_fit(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -138,7 +111,7 @@ async def test_falafel_alloc_first_fit(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -158,7 +131,9 @@ async def test_falafel_alloc_first_fit(dut):
         )  # noqa
     )
     await monitor_task_req_from_lsu
-    await send_rsp_from_mem(dut, clk, expected_addr, linked_list, expected_data)  # noqa
+    await send_store_rsp_from_mem(
+        dut, clk, expected_addr, linked_list, expected_data
+    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -215,45 +190,10 @@ async def test_falafel_alloc_best_fit(dut):
     print("-----Start allocation-----")
     linked_list.print_list()
 
-    # loading first header
-    expected_addr = 16
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the second header
-    expected_addr = 300
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the third header
-    expected_addr = 500
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the forth (last) header
-    expected_addr = 2000
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    # loading first - forth (last) header
+    await load_headers(
+        dut, clk, linked_list, expected_addresses=[16, 300, 500, 2000]
+    )  # noqa
 
     print("-----finish loading / finding fit-----")
 
@@ -268,7 +208,7 @@ async def test_falafel_alloc_best_fit(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -290,7 +230,7 @@ async def test_falafel_alloc_best_fit(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -310,7 +250,9 @@ async def test_falafel_alloc_best_fit(dut):
         )  # noqa
     )
     await monitor_task_req_from_lsu
-    await send_rsp_from_mem(dut, clk, expected_addr, linked_list, expected_data)  # noqa
+    await send_store_rsp_from_mem(
+        dut, clk, expected_addr, linked_list, expected_data
+    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -367,57 +309,16 @@ async def test_falafel_free_merge_right(dut):
     print("-----Start allocation-----")
     linked_list.print_list()
 
-    # loading first header
-    expected_addr = 16
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the second header
-    expected_addr = 300
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the third header
-    expected_addr = 500
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    # loading first - third header
+    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    expected_addr = 2000
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[2000])
 
     # loading the right header
-    expected_addr = 2216
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[2216])
 
     # updating the allocated block (storing size & next_addr)
     expected_addr = 2000
@@ -430,7 +331,7 @@ async def test_falafel_free_merge_right(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -450,7 +351,9 @@ async def test_falafel_free_merge_right(dut):
         )  # noqa
     )
     await monitor_task_req_from_lsu
-    await send_rsp_from_mem(dut, clk, expected_addr, linked_list, expected_data)  # noqa
+    await send_store_rsp_from_mem(
+        dut, clk, expected_addr, linked_list, expected_data
+    )  # noqa
     print("-----Granted adjusting the link-----")
     linked_list.print_list()
 
@@ -508,47 +411,13 @@ async def test_falafel_free_merge_left(dut):
     print("-----Start freeing-----")
     linked_list.print_list()
 
-    # loading first header
-    expected_addr = 16
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the second header
-    expected_addr = 300
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the third header
-    expected_addr = 500
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    # loading first - third header
+    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    expected_addr = 800
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[800])
 
     # creating a new (merged) block (size & next_addr)
     expected_addr = 500
@@ -561,7 +430,7 @@ async def test_falafel_free_merge_left(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,
@@ -626,57 +495,15 @@ async def test_falafel_free_merge_both_sides(dut):
     print("-----Start freeing-----")
     linked_list.print_list()
 
-    # loading first header
-    expected_addr = 16
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the second header
-    expected_addr = 300
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
-
-    # loading the third header
-    expected_addr = 500
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[16, 300, 500])  # noqa
 
     print("-----finding block to free-----")
 
     # loading the freeing header
-    expected_addr = 800
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[800])
 
     # loading the right header
-    expected_addr = 2000
-    monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(dut, expected_addr=expected_addr)
-    )
-    await monitor_task_req_from_lsu
-    await FallingEdge(clk)
-    await FallingEdge(clk)
-    await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+    await load_headers(dut, clk, linked_list, expected_addresses=[2000])
 
     # creating a new (merged) block (size & next_addr)
     expected_addr = 500
@@ -689,7 +516,7 @@ async def test_falafel_free_merge_both_sides(dut):
     await monitor_task_req_from_lsu
     await FallingEdge(clk)
     await FallingEdge(clk)
-    await send_rsp_from_mem(
+    await send_store_rsp_from_mem(
         dut,
         clk,
         expected_addr,

@@ -1,6 +1,8 @@
 from cocotb.triggers import FallingEdge, RisingEdge
+import cocotb
 
 from free_list import LinkedList
+from monitor import monitor_req_from_lsu
 
 
 async def send_req_to_allocate(dut, clk):
@@ -32,7 +34,17 @@ async def grant_store(dut, clk):
     dut.mem_req_rdy_i.setimmediatevalue(1)
 
 
-async def send_rsp_from_mem(
+async def load_headers(dut, clk, linked_list, expected_addresses):
+    for expected_addr in expected_addresses:
+        monitor_task_req_from_lsu = cocotb.start_soon(
+            monitor_req_from_lsu(dut, expected_addr=expected_addr)
+        )
+        await monitor_task_req_from_lsu
+        await FallingEdge(clk)
+        await send_load_rsp_from_mem(dut, clk, expected_addr, linked_list)
+
+
+async def send_store_rsp_from_mem(
     dut, clk, addr, linked_list: LinkedList, data, expected_next_addr=None
 ):
     if (addr - 8) in linked_list.nodes:
