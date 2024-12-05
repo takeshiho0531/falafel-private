@@ -6,6 +6,7 @@ module falafel_core
     input logic clk_i,
     input logic rst_ni,
     input alloc_strategy_t config_alloc_strategy_i,
+    input config_regs_t falafel_config_i,
     input logic is_alloc_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
     input logic [DATA_W-1:0] addr_to_free_i,
@@ -64,6 +65,7 @@ module falafel_core
   logic [DATA_W-1:0] size_to_allocate_d, size_to_allocate_q;
   logic [DATA_W-1:0] addr_to_free_d, addr_to_free_q;
 
+  header_t header_to_get_lock;
   header_t header_from_lsu_d, header_from_lsu_q;
   header_t load_req_header;
   load_type_t load_type_d, load_type_q;
@@ -129,6 +131,8 @@ module falafel_core
     addr_to_free_d = addr_to_free_q;
     core_op_d = core_op_q;
 
+    header_to_get_lock = '0;
+
     load_req_header = '0;
     load_type_d = load_type_q;
 
@@ -192,7 +196,10 @@ module falafel_core
         end
       end
       REQ_ACQUIRE_LOCK: begin
-        send_req_to_lsu(.header_i('0), .lsu_op_i(LOCK), .req_to_lsu_o(req_to_lsu_o));
+        header_to_get_lock.addr = falafel_config_i.lock_ptr;
+        header_to_get_lock.size = falafel_config_i.lock_id;  // TODO
+        send_req_to_lsu(.header_i(header_to_get_lock), .lsu_op_i(LOCK),
+                        .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
           core_op_d = CORE_ACQUIRE_LOCK;
           state_d   = WAIT_RSP_FROM_LSU;
@@ -396,7 +403,7 @@ module falafel_core
         if (rsp_from_lsu_i.val) begin
           unique case (core_op_q)
             CORE_ACQUIRE_LOCK: begin
-              curr_header_d.addr = 'h10;
+              curr_header_d.addr = falafel_config_i.free_list_ptr;  // TODO
               state_d = REQ_LOAD_HEADER;
               load_type_d = SEARCH;
             end

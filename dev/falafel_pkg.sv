@@ -47,5 +47,13 @@ package falafel_pkg;
   localparam logic [DATA_W-1:0] MIN_PAYLOAD_SIZE = 0;  // TODO
   localparam logic [DATA_W-1:0] MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
 
+  // Internal configuration registers
+  typedef struct packed {
+    // logic is_on;
+    logic [DATA_W-1:0] free_list_ptr;
+    logic [DATA_W-1:0] lock_ptr;
+    logic [DATA_W-1:0] lock_id;
+  } config_regs_t;
+
 endpackage
 `endif

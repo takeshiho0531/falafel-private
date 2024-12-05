@@ -3,7 +3,7 @@ from cocotb.triggers import ReadOnly, Timer
 
 
 @cocotb.coroutine
-async def monitor_req_from_lsu(
+async def monitor_req_from_falafel(
     dut, expected_addr=None, expected_data=None, expected_is_write=0
 ):
     while True:
