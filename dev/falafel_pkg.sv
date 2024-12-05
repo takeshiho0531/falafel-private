@@ -47,6 +47,15 @@ package falafel_pkg;
   localparam logic [DATA_W-1:0] MIN_PAYLOAD_SIZE = 0;  // TODO
   localparam logic [DATA_W-1:0] MIN_ALLOC_SIZE = BLOCK_HEADER_SIZE + MIN_PAYLOAD_SIZE;
 
+  localparam [DATA_W-1:0] OPCODE_SIZE = 4;
+  localparam [DATA_W-1:0] MSG_ID_SIZE = 8;
+  localparam [DATA_W-1:0] REG_ADDR_SIZE = 16;
+
+typedef struct packed {
+    logic [MSG_ID_SIZE-1:0] id;
+    logic [DATA_W-1:0] size;
+  } alloc_entry_t;
+
   // Internal configuration registers
   typedef struct packed {
     // logic is_on;
@@ -54,6 +63,26 @@ package falafel_pkg;
     logic [DATA_W-1:0] lock_ptr;
     logic [DATA_W-1:0] lock_id;
   } config_regs_t;
+
+  typedef struct packed {
+    logic [MSG_ID_SIZE-1:0] id;
+    logic [OPCODE_SIZE-1:0] opcode;
+  } base_header_t;
+
+  typedef struct packed {
+    logic [REG_ADDR_SIZE-1:0] addr;
+    base_header_t base_header;
+  } config_reg_header_t;
+
+  // Configuration registers addresses
+  localparam FREE_LIST_PTR_ADDR = 'h10;
+  localparam LOCK_PTR_ADDR = 'h18;
+  localparam LOCK_ID_ADDR = 'h20;
+
+  // Opcodes
+  localparam REQ_ACCESS_REGISTER = OPCODE_SIZE'(0);
+  localparam REQ_ALLOC_MEM = OPCODE_SIZE'(1);
+  localparam REQ_FREE_MEM = OPCODE_SIZE'(2);
 
 endpackage
 `endif

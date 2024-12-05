@@ -35,15 +35,6 @@ async def send_req_to_wrapper(dut, clk, config_data, index):
     dut.req_val_i[index].setimmediatevalue(0)
 
 
-# async def send_alloc_req_to_wrapper(dut, clk):
-#     await FallingEdge(clk)
-#     dut.is_alloc_i.setimmediatevalue(1)
-#     dut.req_alloc_valid_i.setimmediatevalue(1)
-#     dut.size_to_allocate_i.setimmediatevalue(200)
-#     await FallingEdge(clk)
-#     dut.req_alloc_valid_i.setimmediatevalue(0)
-
-
 async def grant_store(dut, clk):
     dut.mem_req_rdy_i.setimmediatevalue(0)
     dut.mem_rsp_val_i.setimmediatevalue(1)

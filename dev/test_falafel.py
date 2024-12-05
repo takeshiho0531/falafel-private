@@ -42,10 +42,10 @@ async def test_falafel_alloc_first_fit(dut):
     free_list_ptr = 16
     lock_ptr = 0
     lock_id = 0x9ABC
-    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id  # noqa
     dut.falafel_config_i = packed_value
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut)) # noqa
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
 
     linked_list = LinkedList()
