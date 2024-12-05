@@ -127,7 +127,7 @@ module falafel_lsu
       end
       LOCK_DO_CAS: begin
         mem_req_is_cas_o = 1'b1;
-        mem_req_data_o = '0;  // TODO lock id
+        mem_req_data_o = req_header_q.header.size;  // TODO lock id
         mem_req_val_o = 1;
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;

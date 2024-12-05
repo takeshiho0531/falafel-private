@@ -2,7 +2,7 @@ import cocotb
 from cocotb.triggers import FallingEdge
 from cocotb.clock import Clock
 
-from monitor import monitor_req_from_lsu, monitor_falafel_ready  # noqa
+from monitor import monitor_req_from_falafel, monitor_falafel_ready  # noqa
 from free_list import LinkedList
 from mem_rsp import (
     send_req_to_allocate,
@@ -38,7 +38,14 @@ async def test_falafel_alloc_first_fit(dut):
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
     dut.config_alloc_strategy_i.setimmediatevalue(0)  # first fit
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    DATA_W = 64
+    free_list_ptr = 16
+    lock_ptr = 0
+    lock_id = 0x9ABC
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    dut.falafel_config_i = packed_value
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
 
     linked_list = LinkedList()
@@ -139,7 +146,14 @@ async def test_falafel_alloc_best_fit(dut):
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
     dut.config_alloc_strategy_i.setimmediatevalue(1)  # best fit
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    DATA_W = 64
+    free_list_ptr = 16
+    lock_ptr = 0
+    lock_id = 0x9ABC
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    dut.falafel_config_i = packed_value
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
 
     linked_list = LinkedList()
@@ -240,7 +254,14 @@ async def test_falafel_free_merge_right(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    DATA_W = 64
+    free_list_ptr = 16
+    lock_ptr = 0
+    lock_id = 0x9ABC
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    dut.falafel_config_i = packed_value
+
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
 
     linked_list = LinkedList()
@@ -337,8 +358,15 @@ async def test_falafel_free_merge_left(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+
+    DATA_W = 64
+    free_list_ptr = 16
+    lock_ptr = 0
+    lock_id = 0x9ABC
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    dut.falafel_config_i = packed_value
 
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)
@@ -420,8 +448,15 @@ async def test_falafel_free_merge_both_sides(dut):
     clk = dut.clk_i
     cocotb.start_soon(Clock(clk, CLK_PERIOD, UNITS).start())
 
-    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_lsu(dut))
+    monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut))
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+
+    DATA_W = 64
+    free_list_ptr = 16
+    lock_ptr = 0
+    lock_id = 0x9ABC
+    packed_value = (free_list_ptr << (2 * DATA_W)) | (lock_ptr << DATA_W) | lock_id
+    dut.falafel_config_i = packed_value
 
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)

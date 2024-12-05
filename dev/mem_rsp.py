@@ -1,8 +1,8 @@
-from cocotb.triggers import FallingEdge
+from cocotb.triggers import FallingEdge, RisingEdge, ReadOnly
 import cocotb
 
 from free_list import LinkedList
-from monitor import monitor_req_from_lsu
+from monitor import monitor_req_from_falafel
 
 
 async def send_req_to_allocate(dut, clk):
@@ -23,6 +23,27 @@ async def send_req_to_free(dut, clk, addr_to_free):
     dut.req_alloc_valid_i.setimmediatevalue(0)
 
 
+async def send_req_to_wrapper(dut, clk, config_data, index):
+    await FallingEdge(clk)
+    dut.req_val_i[index].setimmediatevalue(1)
+    dut.req_data_i[index].setimmediatevalue(config_data)
+    while not dut.req_rdy_o[index].value:
+        await RisingEdge(clk)
+        await ReadOnly()
+    await FallingEdge(clk)
+    # await FallingEdge(clk)
+    dut.req_val_i[index].setimmediatevalue(0)
+
+
+# async def send_alloc_req_to_wrapper(dut, clk):
+#     await FallingEdge(clk)
+#     dut.is_alloc_i.setimmediatevalue(1)
+#     dut.req_alloc_valid_i.setimmediatevalue(1)
+#     dut.size_to_allocate_i.setimmediatevalue(200)
+#     await FallingEdge(clk)
+#     dut.req_alloc_valid_i.setimmediatevalue(0)
+
+
 async def grant_store(dut, clk):
     dut.mem_req_rdy_i.setimmediatevalue(0)
     dut.mem_rsp_val_i.setimmediatevalue(1)
@@ -35,7 +56,7 @@ async def grant_store(dut, clk):
 async def handle_loading_headers(dut, clk, linked_list, expected_addresses):
     for expected_addr in expected_addresses:
         monitor_task_req_from_lsu = cocotb.start_soon(
-            monitor_req_from_lsu(dut, expected_addr=expected_addr)
+            monitor_req_from_falafel(dut, expected_addr=expected_addr)
         )
         await monitor_task_req_from_lsu
         await FallingEdge(clk)
@@ -46,7 +67,7 @@ async def handle_storing_headers(
     dut, clk, linked_list, expected_addr, expected_data, expected_next_addr
 ):
     monitor_task_req_from_lsu = cocotb.start_soon(
-        monitor_req_from_lsu(
+        monitor_req_from_falafel(
             dut, expected_addr=expected_addr, expected_data=expected_data
         )
     )
