@@ -12,6 +12,11 @@ module falafel
     input logic [DATA_W-1:0] size_to_allocate_i,
     input logic req_alloc_valid_i,
 
+    output logic rsp_result_is_write_o,
+    output logic rsp_result_val_o,
+    output logic [DATA_W-1:0] rsp_result_data_o,
+    input logic result_ready_i,
+
     //----------- memory request ------------//
     output logic              mem_req_val_o,       // req valid
     input  logic              mem_req_rdy_i,       // mem ready
@@ -43,7 +48,11 @@ module falafel
       .core_ready_o(core_ready),
       .lsu_ready_i(lsu_ready),
       .rsp_from_lsu_i(core_rsp_header),
-      .req_to_lsu_o(core_req_header)
+      .req_to_lsu_o(core_req_header),
+      .result_ready_i,
+      .rsp_result_is_write_o,
+      .rsp_result_val_o,
+      .rsp_result_data_o
   );
 
   falafel_lsu i_lsu (

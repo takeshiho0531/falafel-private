@@ -13,7 +13,11 @@ module falafel_core
     output logic core_ready_o,
     input logic lsu_ready_i,
     input header_rsp_t rsp_from_lsu_i,
-    output header_req_t req_to_lsu_o
+    output header_req_t req_to_lsu_o,
+    input logic result_ready_i,
+    output logic rsp_result_val_o,
+    output logic rsp_result_is_write_o,
+    output logic [DATA_W-1:0] rsp_result_data_o
 );
 
   typedef enum integer {
@@ -29,7 +33,8 @@ module falafel_core
     FREE_MERGE_NEIGHBOR,
     REQ_CREATE_NEW_HEADER,
     REQ_ADJUST_LINK,
-    WAIT_RSP_FROM_LSU
+    WAIT_RSP_FROM_LSU,
+    RETURN_RESULT
   } core_state_e;
 
   typedef enum integer {
@@ -66,6 +71,7 @@ module falafel_core
   header_t prev_header_d, prev_header_q;
   header_t curr_header_d, curr_header_q;
   header_t first_fit_header, first_fit_header_prev;
+  header_t first_fit_header_d, first_fit_header_q;
   header_t best_fit_header_d, best_fit_header_q;
   header_t best_fit_header_prev_d, best_fit_header_prev_q;
   logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
@@ -130,6 +136,7 @@ module falafel_core
     curr_header_d = curr_header_q;
     header_from_lsu_d = header_from_lsu_q;
     first_fit_header = '0;
+    first_fit_header_d = first_fit_header_q;
     best_fit_header_d = best_fit_header_q;
     best_fit_header_prev_d = best_fit_header_prev_q;
     smallest_diff_d = smallest_diff_q;
@@ -145,6 +152,10 @@ module falafel_core
     right_header_d = right_header_q;
     merged_block_header_d = merged_block_header_q;
 
+    rsp_result_val_o = 0;
+    rsp_result_is_write_o = 0;
+    rsp_result_data_o = '0;
+
     unique case (state_q)
       IDLE: begin
         core_ready_o = 1;
@@ -159,6 +170,7 @@ module falafel_core
         curr_header_d = '0;
         prev_header_d = '0;
         header_from_lsu_d = '0;
+        first_fit_header_d = '0;
         best_fit_header_d = '0;
         best_fit_header_prev_d = '0;
         smallest_diff_d = {DATA_W{1'b1}};
@@ -220,6 +232,7 @@ module falafel_core
         end else begin
           first_fit_header = header_from_lsu_q;
           first_fit_header_prev = prev_header_q;
+          first_fit_header_d = first_fit_header;
           set_headers_after_fit(
               .fit_header_i(first_fit_header), .fit_header_prev_i(first_fit_header_prev),
               .size_to_allocate_i(size_to_allocate_q),
@@ -419,8 +432,25 @@ module falafel_core
             CORE_ADJUST_LINK: state_d = REQ_RELEASE_LOCK;
             CORE_ADJUST_ALLOCATED_HEADER: state_d = REQ_CREATE_NEW_HEADER;
             CORE_CREATE_NEW_HEADER: state_d = REQ_ADJUST_LINK;
-            CORE_RELEASE: state_d = IDLE;
+            CORE_RELEASE: state_d = RETURN_RESULT;
           endcase
+        end
+      end
+      RETURN_RESULT: begin
+        rsp_result_val_o = 1;
+        if (is_alloc_q) begin
+          rsp_result_is_write_o = 1;
+          if (config_alloc_strategy_i == FIRST_FIT) begin
+            rsp_result_data_o = first_fit_header_q.addr;
+          end else begin
+            rsp_result_data_o = best_fit_header_q.addr;
+          end
+        end else begin
+          rsp_result_is_write_o = 0;
+        end
+
+        if (result_ready_i) begin
+          state_d = IDLE;
         end
       end
 
@@ -441,6 +471,7 @@ module falafel_core
 
       curr_header_q <= 0;
       prev_header_q <= 0;
+      first_fit_header_q <= '0;
       best_fit_header_q <= '0;
       best_fit_header_prev_q <= '0;
       smallest_diff_q <= '0;
@@ -463,6 +494,7 @@ module falafel_core
 
       curr_header_q <= curr_header_d;
       prev_header_q <= prev_header_d;
+      first_fit_header_q <= first_fit_header_d;
       best_fit_header_q <= best_fit_header_d;
       best_fit_header_prev_q <= best_fit_header_prev_d;
       smallest_diff_q <= smallest_diff_d;

@@ -28,6 +28,5 @@ async def monitor_falafel_ready(dut):
     while True:
         await ReadOnly()
         if dut.mem_rsp_rdy_o.value == 1:
-            dut._log.info("mem_rsp_rdy_o is now 1")
             break
         await Timer(1, units="ns")

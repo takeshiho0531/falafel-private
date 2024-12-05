@@ -1,8 +1,8 @@
 import cocotb
-from cocotb.triggers import FallingEdge, RisingEdge
+from cocotb.triggers import FallingEdge
 from cocotb.clock import Clock
 
-from monitor import monitor_req_from_lsu, monitor_falafel_ready
+from monitor import monitor_req_from_lsu, monitor_falafel_ready  # noqa
 from free_list import LinkedList
 from mem_rsp import (
     send_req_to_allocate,
@@ -51,6 +51,7 @@ async def test_falafel_alloc_first_fit(dut):
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
+    dut.result_ready_i.setimmediatevalue(1)
 
     for i in range(10):
         await FallingEdge(clk)
@@ -123,7 +124,12 @@ async def test_falafel_alloc_first_fit(dut):
     await grant_lock(dut, clk)
     print("Granted release lock")
     await FallingEdge(clk)
-    await RisingEdge(clk)
+
+    # checking the result
+    assert dut.rsp_result_val_o == 1
+    assert dut.rsp_result_is_write_o == 1
+    assert dut.rsp_result_data_o == 500, int(dut.rsp_result_data_o)
+    await FallingEdge(clk)
 
 
 @cocotb.test()
@@ -147,6 +153,7 @@ async def test_falafel_alloc_best_fit(dut):
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
+    dut.result_ready_i.setimmediatevalue(1)
 
     for i in range(10):
         await FallingEdge(clk)
@@ -219,7 +226,12 @@ async def test_falafel_alloc_best_fit(dut):
     await grant_lock(dut, clk)
     print("Granted release lock")
     await FallingEdge(clk)
-    await RisingEdge(clk)
+
+    # checking the result
+    assert dut.rsp_result_val_o == 1
+    assert dut.rsp_result_is_write_o == 1
+    assert dut.rsp_result_data_o == 2000, int(dut.rsp_result_data_o)
+    await FallingEdge(clk)
 
 
 @cocotb.test()
@@ -243,6 +255,7 @@ async def test_falafel_free_merge_right(dut):
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
+    dut.result_ready_i.setimmediatevalue(1)
 
     for i in range(10):
         await FallingEdge(clk)
@@ -311,7 +324,11 @@ async def test_falafel_free_merge_right(dut):
     await grant_lock(dut, clk)
     print("Granted release lock")
     await FallingEdge(clk)
-    await RisingEdge(clk)
+
+    # checking the result
+    assert dut.rsp_result_val_o == 1
+    assert dut.rsp_result_is_write_o == 0
+    await FallingEdge(clk)
 
 
 @cocotb.test()
@@ -335,6 +352,7 @@ async def test_falafel_free_merge_left(dut):
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
+    dut.result_ready_i.setimmediatevalue(1)
 
     for i in range(10):
         await FallingEdge(clk)
@@ -389,7 +407,11 @@ async def test_falafel_free_merge_left(dut):
     await grant_lock(dut, clk)
     print("Granted release lock")
     await FallingEdge(clk)
-    await RisingEdge(clk)
+
+    # checking the result
+    assert dut.rsp_result_val_o == 1
+    assert dut.rsp_result_is_write_o == 0
+    await FallingEdge(clk)
 
 
 @cocotb.test()
@@ -413,6 +435,7 @@ async def test_falafel_free_merge_both_sides(dut):
 
     dut.mem_req_rdy_i.setimmediatevalue(1)
     dut.mem_rsp_val_i.setimmediatevalue(0)
+    dut.result_ready_i.setimmediatevalue(1)
 
     for i in range(10):
         await FallingEdge(clk)
@@ -471,4 +494,8 @@ async def test_falafel_free_merge_both_sides(dut):
     await grant_lock(dut, clk)
     print("Granted release lock")
     await FallingEdge(clk)
-    await RisingEdge(clk)
+
+    # checking the result
+    assert dut.rsp_result_val_o == 1
+    assert dut.rsp_result_is_write_o == 0
+    await FallingEdge(clk)
