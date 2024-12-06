@@ -4,3 +4,4 @@ results.xml
 *.vcd
 *.fst
 *.fst.hier
+!doc/dump_*.fst

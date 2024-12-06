@@ -6,3 +6,4 @@
 - Nov 29: implement a feature to merge blocks when freeing, if the block is next to the one on the right @[15af0dda](https://github.com/jfarresg/falafel-private/tree/15af0dda0423f4fe7cc4ffe8d0bd92d0672fcfe0)
 - Nov 30: <br> implement a feature to merge blocks when freeing, if the block is next to the one on the left @[2003be1c](https://github.com/jfarresg/falafel-private/tree/2003be1c5972101a479c7aad083bac49d947aa1c) <br>
 <span style="color: magenta;"><u>**falafel v2 now supports a feature to merge blocks when freeing**</u></span> if the free blocks are next to each other @[db109d22](https://github.com/jfarresg/falafel-private/tree/db109d22db36fe63487d010262a3fcaa1756f88e)  
+- Dec 5:  integrated the *falafel_input_arbiter* and *falafel_fifo* used in falafel v1
