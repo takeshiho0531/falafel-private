@@ -153,13 +153,10 @@ async def send_next_addr_from_mem(dut, clk, addr, linked_list: LinkedList):
 
 
 async def grant_lock(dut, clk):
-    await FallingEdge(clk)
-    await FallingEdge(clk)
     await RisingEdge(clk)
-    dut.mem_req_rdy_i.setimmediatevalue(0)
     dut.mem_rsp_val_i.setimmediatevalue(1)
     dut.mem_rsp_data_i.setimmediatevalue(0)
     await FallingEdge(clk)
     await RisingEdge(clk)
+    await FallingEdge(clk)
     dut.mem_rsp_val_i.setimmediatevalue(0)
-    dut.mem_req_rdy_i.setimmediatevalue(1)

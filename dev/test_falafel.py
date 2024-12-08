@@ -31,6 +31,16 @@ async def reset_dut(dut, clk):
     await FallingEdge(clk)
 
 
+async def sim_time_counter(dut, clk):
+    counter = 0
+
+    while counter < MAX_SIM_TIME:
+        counter += 1
+        await FallingEdge(clk)
+
+    assert False, "Surpassed MAX_SIM_TIME of " + str(MAX_SIM_TIME)
+
+
 @cocotb.test()
 async def test_falafel_alloc_first_fit(dut):
     print("---------------------- Start first fit test ----------------------")
@@ -47,6 +57,7 @@ async def test_falafel_alloc_first_fit(dut):
 
     monitor_task_req_from_lsu = cocotb.start_soon(monitor_req_from_falafel(dut)) # noqa
     monitor_task_falafel_ready = cocotb.start_soon(monitor_falafel_ready(dut))
+    await cocotb.start(sim_time_counter(dut, clk))
 
     linked_list = LinkedList()
     linked_list.add_node(16, 160, 300)
