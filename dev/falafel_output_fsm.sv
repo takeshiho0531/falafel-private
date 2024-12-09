@@ -1,4 +1,4 @@
-`include "falafel_pkg.sv"
+// `include "falafel_pkg.sv"
 
 module falafel_output_fsm
   import falafel_pkg::*;

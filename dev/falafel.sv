@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "falafel_pkg.sv"
+// `include "falafel_pkg.sv"
 
 module falafel
   import falafel_pkg::*;
@@ -25,7 +25,7 @@ module falafel
     output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
-    // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_rsp_val_i,  // resp valid
@@ -72,6 +72,7 @@ module falafel
       .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
+      .mem_req_cas_exp_o,
       // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
       //----------- memory response ------------//

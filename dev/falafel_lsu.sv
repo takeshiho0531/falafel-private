@@ -1,4 +1,4 @@
-`include "falafel_pkg.sv"
+// `include "falafel_pkg.sv"
 
 module falafel_lsu
   import falafel_pkg::*;
@@ -18,7 +18,7 @@ module falafel_lsu
     output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
-    // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_rsp_val_i,  // resp valid
@@ -55,19 +55,28 @@ module falafel_lsu
   lsu_op_t lsu_op_q, lsu_op_d;
   logic [DATA_W-1:0] load_addr_q, load_addr_d;
 
+  assign mem_req_cas_exp_o = 0;
+
+  logic val_buffer_d, val_buffer_q;
+  logic val_trigger;
+  assign val_buffer_d = val_trigger;
+  assign mem_req_val_o = val_buffer_d & !val_buffer_q;
+
   task automatic send_mem_load_req(
-      input logic [DATA_W-1:0] addr_to_send_i, output logic mem_req_val_o,
+      input logic [DATA_W-1:0] addr_to_send_i,
+      // output logic mem_req_val_o,
       output logic [DATA_W-1:0] mem_req_addr_o, output logic mem_req_is_write_o);
-    mem_req_val_o = 1;
+    // mem_req_val_o = 1;
     mem_req_addr_o = addr_to_send_i;
     mem_req_is_write_o = 0;
   endtask
 
   task automatic send_mem_store_req(
       input logic [DATA_W-1:0] addr_to_send_i, input logic [DATA_W-1:0] data_to_send_i,
-      output logic mem_req_val_o, output logic [DATA_W-1:0] mem_req_addr_o,
+      // output logic mem_req_val_o,
+      output logic [DATA_W-1:0] mem_req_addr_o,
       output logic [DATA_W-1:0] mem_req_data_o, output logic mem_req_is_write_o);
-    mem_req_val_o = 1;
+    // mem_req_val_o = 1;
     mem_req_addr_o = addr_to_send_i;
     mem_req_data_o = data_to_send_i;
     mem_req_is_write_o = 1;
@@ -80,15 +89,17 @@ module falafel_lsu
     lsu_op_d = lsu_op_q;
     lsu_ready_o = 0;
     mem_req_is_cas_o = 0;
-    mem_req_val_o = 0;
+    // mem_req_val_o = 0;
     core_rsp_header_o.val = 0;
     load_addr_d = load_addr_q;
     mem_rsp_rdy_o = 0;
 
+    val_trigger = 0;
+
     unique case (state_q)
       IDLE: begin
         lsu_ready_o   = 1;
-        mem_rsp_rdy_o = 1;
+        // mem_rsp_rdy_o = 1;
         if (core_req_header_i.val) begin
           req_header_d  = core_req_header_i;
           mem_rsp_rdy_o = 0;
@@ -119,38 +130,48 @@ module falafel_lsu
         end
       end
       LOAD_KEY: begin
-        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr), .mem_req_val_o(mem_req_val_o),
+        val_trigger = 1'b1;
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
+                          // .mem_req_val_o(mem_req_val_o),
                           .mem_req_addr_o(mem_req_addr_o), .mem_req_is_write_o(mem_req_is_write_o));
+        mem_req_data_o = '0;
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOCK_DO_CAS: begin
+        val_trigger = 1'b1;
         mem_req_is_cas_o = 1'b1;
         mem_req_data_o = req_header_q.header.size;  // TODO lock id
-        mem_req_val_o = 1;
+        // mem_req_val_o = 1;
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOAD_SIZE: begin
-        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr), .mem_req_val_o(mem_req_val_o),
+        val_trigger = 1'b1;
+        send_mem_load_req(.addr_to_send_i(req_header_q.header.addr),
+                          // .mem_req_val_o(mem_req_val_o),
                           .mem_req_addr_o(mem_req_addr_o), .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
       LOAD_NEXT_ADDR: begin
+        val_trigger = 1'b1;
         send_mem_load_req(.addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
-                          .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                          // .mem_req_val_o(mem_req_val_o),
+                          .mem_req_addr_o(mem_req_addr_o),
                           .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
           state_d = WAIT_RSP_FROM_MEM;
         end
       end
       STORE_UPDATED_SIZE: begin
+        val_trigger = 1'b1;
         send_mem_store_req(.addr_to_send_i(req_header_q.header.addr),
-                           .data_to_send_i(req_header_q.header.size), .mem_req_val_o(mem_req_val_o),
+                           .data_to_send_i(req_header_q.header.size),
+                          //  .mem_req_val_o(mem_req_val_o),
                            .mem_req_addr_o(mem_req_addr_o), .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -158,9 +179,11 @@ module falafel_lsu
         end
       end
       STORE_UPDATED_NEXT_ADDR: begin
+        val_trigger = 1'b1;
         send_mem_store_req(.addr_to_send_i(req_header_q.header.addr + BLOCK_NEXT_ADDR_OFFSET),
                            .data_to_send_i(req_header_q.header.next_addr),
-                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                          //  .mem_req_val_o(mem_req_val_o), 
+                           .mem_req_addr_o(mem_req_addr_o),
                            .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -168,8 +191,10 @@ module falafel_lsu
         end
       end
       UNLOCK_KEY: begin
+        val_trigger = 1'b1;
         send_mem_store_req(.addr_to_send_i('0), .data_to_send_i(EMPTY_KEY),
-                           .mem_req_val_o(mem_req_val_o), .mem_req_addr_o(mem_req_addr_o),
+                          //  .mem_req_val_o(mem_req_val_o),
+                           .mem_req_addr_o(mem_req_addr_o),
                            .mem_req_data_o(mem_req_data_o),
                            .mem_req_is_write_o(mem_req_is_write_o));
         if (mem_req_rdy_i) begin
@@ -238,11 +263,13 @@ module falafel_lsu
       req_header_q <= '0;
       rsp_header_q <= '0;
       lsu_op_q <= LSU_LOAD_KEY;
+      val_buffer_q <= '0;
     end else begin
       state_q <= state_d;
       req_header_q <= req_header_d;
       rsp_header_q <= rsp_header_d;
       lsu_op_q <= lsu_op_d;
+      val_buffer_q <= val_buffer_d;
     end
   end
 

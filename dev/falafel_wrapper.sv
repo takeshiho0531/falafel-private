@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "falafel_pkg.sv"
+// `include "falafel_pkg.sv"
 
 module falafel_wrapper
   import falafel_pkg::*;
@@ -125,7 +125,7 @@ module falafel_wrapper
       .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
-      // .mem_req_cas_exp_o,   // comp.
+      .mem_req_cas_exp_o,   // comp
       .mem_rsp_val_i,  // resp valid
       .mem_rsp_rdy_o,  // falafel ready
       .mem_rsp_data_i

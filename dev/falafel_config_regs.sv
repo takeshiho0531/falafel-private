@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "falafel_pkg.sv"
+// `include "falafel_pkg.sv"
 
 module falafel_config_regs
   import falafel_pkg::*;
