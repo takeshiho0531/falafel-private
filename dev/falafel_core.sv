@@ -41,6 +41,7 @@ module falafel_core
   typedef enum integer {
     CORE_ACQUIRE_LOCK,
     CORE_RELEASE,
+    CORE_LOAD_FIRST_HEADER_ADDR,
     CORE_LOAD_HEADER,
     CORE_ADJUST_ALLOCATED_HEADER,
     CORE_LOAD_FREE_TARGET_HEADER,
@@ -54,6 +55,7 @@ module falafel_core
   } core_op_t;
 
   typedef enum integer {
+    FIRST_HEADER_ADDR,
     SEARCH,
     FREE_TARGET_HEADER,
     FREE_RIGHT_HEADER
@@ -207,6 +209,10 @@ module falafel_core
       end
       REQ_LOAD_HEADER: begin
         unique case (load_type_q)
+          FIRST_HEADER_ADDR: begin
+            load_req_header.addr = falafel_config_i.free_list_ptr;
+            core_op_d = CORE_LOAD_FIRST_HEADER_ADDR;
+          end
           SEARCH: begin
             load_req_header.addr = curr_header_q.addr;
             core_op_d = CORE_LOAD_HEADER;
@@ -403,7 +409,11 @@ module falafel_core
         if (rsp_from_lsu_i.val) begin
           unique case (core_op_q)
             CORE_ACQUIRE_LOCK: begin
-              curr_header_d.addr = falafel_config_i.free_list_ptr;  // TODO
+              state_d = REQ_LOAD_HEADER;
+              load_type_d = FIRST_HEADER_ADDR;
+            end
+            CORE_LOAD_FIRST_HEADER_ADDR: begin
+              curr_header_d.addr = rsp_from_lsu_i.header.size;  // TODO
               state_d = REQ_LOAD_HEADER;
               load_type_d = SEARCH;
             end
