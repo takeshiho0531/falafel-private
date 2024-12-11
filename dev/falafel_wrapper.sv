@@ -107,6 +107,7 @@ module falafel_wrapper
       .rst_ni,
       .falafel_config_i(config_regs),
       .config_alloc_strategy_i(0),  // TODO
+      .req_alloc_ready_o(alloc_fifo_read_en),
       .is_alloc_i(is_alloc),
       .req_alloc_valid_i(req_alloc_valid),
 

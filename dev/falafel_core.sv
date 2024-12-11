@@ -7,6 +7,7 @@ module falafel_core
     input logic rst_ni,
     input alloc_strategy_t config_alloc_strategy_i,
     input config_regs_t falafel_config_i,
+    output logic req_alloc_ready_o,
     input logic is_alloc_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
     input logic [DATA_W-1:0] addr_to_free_i,
@@ -161,11 +162,13 @@ module falafel_core
     rsp_result_val_o = 0;
     rsp_result_is_write_o = 0;
     rsp_result_data_o = '0;
+    req_alloc_ready_o = 0;
 
     unique case (state_q)
       IDLE: begin
         core_ready_o = 1;
 
+        req_alloc_ready_o = 1;
         is_alloc_d = 0;
         size_to_allocate_d = '0;
         addr_to_free_d = '0;
@@ -458,9 +461,9 @@ module falafel_core
         if (is_alloc_q) begin
           rsp_result_is_write_o = 1;
           if (config_alloc_strategy_i == FIRST_FIT) begin
-            rsp_result_data_o = first_fit_header_q.addr;
+            rsp_result_data_o = first_fit_header_q.addr + BLOCK_HEADER_SIZE;
           end else begin
-            rsp_result_data_o = best_fit_header_q.addr;
+            rsp_result_data_o = best_fit_header_q.addr + BLOCK_HEADER_SIZE;
           end
         end else begin
           rsp_result_is_write_o = 0;
