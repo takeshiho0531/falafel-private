@@ -1,6 +1,6 @@
 # Falafel version2
 
-last update: Nov 30, 2024
+last update: Dec 10, 2024
 
 A hardware memory allocator; <br>
 this allocator supports 
