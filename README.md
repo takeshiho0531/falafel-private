@@ -9,7 +9,7 @@ this allocator supports
 - merge free blocks next to each other
 
 ## Related Documents
-- the devlopment log →　[dev_log.md](dev/dev_log.md)
+- the devlopment log →　[dev_log.md](doc/dev_log/dev_log.md)
 - the documents → [readme.md](doc/README.md)
 
 ## Setting up

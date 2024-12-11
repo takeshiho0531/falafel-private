@@ -2,6 +2,7 @@
 last update: Dec 5, 2024
 - [terms](#terms)
 - [mechanisms](#mechanisms)
+  - [start processing the req](#start-processing-the-req)
   - [alloc](#alloc)
   - [free](#free)
 - [modules](#modules)
@@ -26,6 +27,28 @@ the data in the header (block size & next address) + the address of the header
 ![insert delete header image](img/insert_delete.png) -->
 
  ## mechanisms
+ ### start processing the req
+ - configuration <br>
+    before allocation or free requests, the following configuration information needs to be sent to the allocator:
+
+    ```verilog
+    logic [DATA_W-1:0] free_list_ptr;  
+    // the address of the location storing the address information of the first header of the free list.
+
+    logic [DATA_W-1:0] lock_ptr; 
+    // the address to store the lock id. if `EMPTY_KEY` is stored, no process holds the lock.
+
+    logic [DATA_W-1:0] lock_id;  
+    // the id assigned to each request allows identification of whether the process for that request holds the lock.
+    ```
+ - lock <br>
+    if `EMPTY_KEY` is stored in `lock_ptr`, the lock can be acquired by storing the request's `lock_id` in `lock_ptr`. <br>
+    when the process is completed, store `EMPTY_KEY` in `lock_ptr`.
+
+ - reading the first header of the free list <br>
+    reading the data stored in `free_list_ptr` gives the address of the first header of the free list.
+
+
  ### alloc
  1. provide the alloc request and the memory size to allocate
  2. acquire lock 
