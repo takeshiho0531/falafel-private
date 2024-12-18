@@ -107,6 +107,7 @@ module falafel_wrapper
       .rst_ni,
       .falafel_config_i(config_regs),
       .config_alloc_strategy_i(0),  // TODO
+      .req_alloc_ready_o(alloc_fifo_read_en),
       .is_alloc_i(is_alloc),
       .req_alloc_valid_i(req_alloc_valid),
 
@@ -125,7 +126,7 @@ module falafel_wrapper
       .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
-      // .mem_req_cas_exp_o,   // comp.
+      .mem_req_cas_exp_o,   // comp
       .mem_rsp_val_i,  // resp valid
       .mem_rsp_rdy_o,  // falafel ready
       .mem_rsp_data_i

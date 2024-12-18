@@ -1,11 +1,11 @@
 SIM ?= verilator
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += falafel_wrapper.sv
+VERILOG_SOURCES += falafel.sv
 
-TOPLEVEL = falafel_wrapper
+TOPLEVEL = falafel
 
-MODULE = test_falafel_wrapper
+MODULE = test_falafel
 
 EXTRA_ARGS += --trace-fst --trace-structs
 

@@ -8,6 +8,7 @@ module falafel
     input logic rst_ni,
     input alloc_strategy_t config_alloc_strategy_i,
     input config_regs_t falafel_config_i,
+    output logic req_alloc_ready_o,
     input logic is_alloc_i,
     input logic [DATA_W-1:0] addr_to_free_i,
     input logic [DATA_W-1:0] size_to_allocate_i,
@@ -25,7 +26,7 @@ module falafel
     output logic              mem_req_is_cas_o,    // 1 for cas, 0 for write
     output logic [DATA_W-1:0] mem_req_addr_o,      // address
     output logic [DATA_W-1:0] mem_req_data_o,      // write data
-    // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
+    output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
     //----------- memory response ------------//
     input  logic              mem_rsp_val_i,  // resp valid
@@ -43,6 +44,7 @@ module falafel
       .rst_ni,
       .config_alloc_strategy_i,
       .falafel_config_i,
+      .req_alloc_ready_o,
       .is_alloc_i,
       .addr_to_free_i,
       .size_to_allocate_i,
@@ -72,6 +74,7 @@ module falafel
       .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
+      .mem_req_cas_exp_o,
       // output logic [DATA_W-1:0] mem_req_cas_exp_o,   // compare & swap expected value
 
       //----------- memory response ------------//

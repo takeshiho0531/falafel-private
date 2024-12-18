@@ -77,8 +77,8 @@ module falafel_input_arbiter
               .alloc_req_rdy_i   (queue_alloc_fifo_rdy[i]),
               .alloc_req_data_o  (queue_alloc_fifo_entry[i]),
               .free_req_val_o    (queue_free_fifo_val[i]),
-              .free_req_rdy_i    (queue_free_fifo_val[i]),
-              .free_req_data_o   (queue_free_fifo_val[i]),
+              .free_req_rdy_i    (queue_free_fifo_rdy[i]),
+              .free_req_data_o   (queue_free_fifo_entry[i]),
               .config_reg_write_o(  /* unused */),
               .config_reg_data_o (  /* unused */),
               .config_reg_addr_o (  /* unused */)
