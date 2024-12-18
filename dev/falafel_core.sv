@@ -6,20 +6,20 @@ module falafel_core
     input logic clk_i,
     input logic rst_ni,
     input alloc_strategy_t config_alloc_strategy_i,
-    input config_regs_t falafel_config_i,
-    output logic req_alloc_ready_o,
-    input logic is_alloc_i,
-    input logic [DATA_W-1:0] size_to_allocate_i,
+    (* mark_debug = "true" *) input config_regs_t falafel_config_i,
+    (* mark_debug = "true" *) output logic req_alloc_ready_o,
+    (* mark_debug = "true" *) input logic is_alloc_i,
+    (* mark_debug = "true" *) input logic [DATA_W-1:0] size_to_allocate_i,
     input logic [DATA_W-1:0] addr_to_free_i,
-    input logic req_alloc_valid_i,
-    output logic core_ready_o,
-    input logic lsu_ready_i,
-    input header_rsp_t rsp_from_lsu_i,
-    output header_req_t req_to_lsu_o,
-    input logic result_ready_i,
-    output logic rsp_result_val_o,
-    output logic rsp_result_is_write_o,
-    output logic [DATA_W-1:0] rsp_result_data_o
+    (* mark_debug = "true" *) input logic req_alloc_valid_i,
+    (* mark_debug = "true" *) output logic core_ready_o,
+    (* mark_debug = "true" *) input logic lsu_ready_i,
+    (* mark_debug = "true" *) input header_rsp_t rsp_from_lsu_i,
+    (* mark_debug = "true" *) output header_req_t req_to_lsu_o,
+    (* mark_debug = "true" *) input logic result_ready_i,
+    (* mark_debug = "true" *) output logic rsp_result_val_o,
+    (* mark_debug = "true" *) output logic rsp_result_is_write_o,
+    (* mark_debug = "true" *) output logic [DATA_W-1:0] rsp_result_data_o
 );
 
   typedef enum integer {
@@ -62,10 +62,10 @@ module falafel_core
     FREE_RIGHT_HEADER
   } load_type_t;
 
-  core_state_e state_d, state_q;
+  (* mark_debug = "true" *) core_state_e state_d, state_q;
   core_op_t core_op_d, core_op_q;
-  logic is_alloc_d, is_alloc_q;  // 1: alloc, 0: free
-  logic [DATA_W-1:0] size_to_allocate_d, size_to_allocate_q;
+  (* mark_debug = "true" *) logic is_alloc_d, is_alloc_q;  // 1: alloc, 0: free
+  (* mark_debug = "true" *) logic [DATA_W-1:0] size_to_allocate_d, size_to_allocate_q;
   logic [DATA_W-1:0] addr_to_free_d, addr_to_free_q;
 
   header_t header_to_get_lock;
@@ -76,12 +76,12 @@ module falafel_core
   header_t prev_header_d, prev_header_q;
   header_t curr_header_d, curr_header_q;
   header_t first_fit_header, first_fit_header_prev;
-  header_t first_fit_header_d, first_fit_header_q;
+  (* mark_debug = "true" *) header_t first_fit_header_d, first_fit_header_q;
   header_t best_fit_header_d, best_fit_header_q;
   header_t best_fit_header_prev_d, best_fit_header_prev_q;
   logic [DATA_W-1:0] smallest_diff_d, smallest_diff_q;
 
-  header_t alloc_target_header_d, alloc_target_header_q;
+  (* mark_debug = "true" *) header_t alloc_target_header_d, alloc_target_header_q;
   header_t free_target_header_d, free_target_header_q;
   header_t header_to_create_d, header_to_create_q;
   header_t header_to_adjust_link_d, header_to_adjust_link_q;
@@ -143,6 +143,7 @@ module falafel_core
     curr_header_d = curr_header_q;
     header_from_lsu_d = header_from_lsu_q;
     first_fit_header = '0;
+    first_fit_header_prev = '0;
     first_fit_header_d = first_fit_header_q;
     best_fit_header_d = best_fit_header_q;
     best_fit_header_prev_d = best_fit_header_prev_q;
@@ -321,12 +322,17 @@ module falafel_core
         end
       end
       REQ_ADJUST_LINK: begin
-        if (lsu_ready_i) begin
-          send_req_to_lsu(.header_i(header_to_adjust_link_q), .lsu_op_i(EDIT_NEXT_ADDR),
-                          .req_to_lsu_o(req_to_lsu_o));
-          state_d   = WAIT_RSP_FROM_LSU;
-          core_op_d = CORE_ADJUST_LINK;
+        if (header_to_adjust_link_q.addr == '0) begin
+          state_d = REQ_RELEASE_LOCK;
+        end else begin
+          if (lsu_ready_i) begin
+            send_req_to_lsu(.header_i(header_to_adjust_link_q), .lsu_op_i(EDIT_NEXT_ADDR),
+                            .req_to_lsu_o(req_to_lsu_o));
+            state_d   = WAIT_RSP_FROM_LSU;
+            core_op_d = CORE_ADJUST_LINK;
+          end
         end
+
       end
       FREE_SEARCH_POS: begin
         // if ((addr_to_free_q > header_from_lsu_q.addr) &&
@@ -403,9 +409,13 @@ module falafel_core
         state_d   = REQ_CREATE_NEW_HEADER;
       end
       REQ_RELEASE_LOCK: begin
-        send_req_to_lsu(.header_i('0), .lsu_op_i(UNLOCK), .req_to_lsu_o(req_to_lsu_o));
-        state_d   = WAIT_RSP_FROM_LSU;
-        core_op_d = CORE_RELEASE;
+        if (lsu_ready_i) begin
+          send_req_to_lsu(.header_i(falafel_config_i.lock_ptr), .lsu_op_i(UNLOCK),
+                          .req_to_lsu_o(req_to_lsu_o));
+          req_to_lsu_o.header.addr = falafel_config_i.lock_ptr;
+          state_d = WAIT_RSP_FROM_LSU;
+          core_op_d = CORE_RELEASE;
+        end
       end
       WAIT_RSP_FROM_LSU: begin
         core_ready_o = 1;

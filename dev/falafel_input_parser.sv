@@ -78,6 +78,7 @@ module falafel_input_parser
     free_fifo_write_en = 1'b0;
 
     config_reg_write_o = 1'b0;
+    req_rdy_o = 0;
 
     unique case (input_state_q)
       STATE_READ_HEADER: begin
