@@ -214,12 +214,12 @@ module falafel_lsu
               end
             end
             LSU_DO_CAS: begin
-              // if (mem_rsp_data_i == 0) begin
-              //   state_d = SEND_RSP_TO_CORE;
-              // end else begin
-              //   state_d  = LOAD_KEY;
-              //   lsu_op_d = LSU_LOAD_KEY;
-              // end
+              if (mem_rsp_data_i == 0) begin
+                state_d = SEND_RSP_TO_CORE;
+              end else begin
+                state_d  = LOAD_KEY;
+                lsu_op_d = LSU_LOAD_KEY;
+              end
               begin
                 state_d = SEND_RSP_TO_CORE;
               end
