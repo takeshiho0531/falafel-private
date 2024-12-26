@@ -13,8 +13,8 @@ module falafel_wrapper
     input logic rst_ni,
 
     //--------------- request ---------------//
-    input  logic  [0:0]            req_val_i [NUM_QUEUES],
-    output logic  [0:0]            req_rdy_o [NUM_QUEUES],
+    input  logic [       0:0] req_val_i [NUM_QUEUES],
+    output logic [       0:0] req_rdy_o [NUM_QUEUES],
     input  logic [DATA_W-1:0] req_data_i[NUM_QUEUES],
 
     //-------------- response ---------------//
@@ -102,12 +102,16 @@ module falafel_wrapper
       .config_o(config_regs)
   );
 
+  logic falafel_req_ready;
+  assign alloc_fifo_read_en = is_alloc ? falafel_req_ready : 0;
+  assign free_fifo_read_en  = !(is_alloc) ? falafel_req_ready : 0;
+
   falafel i_falafel (
       .clk_i,
       .rst_ni,
       .falafel_config_i(config_regs),
       .config_alloc_strategy_i(0),  // TODO
-      .req_alloc_ready_o(alloc_fifo_read_en),
+      .req_alloc_ready_o(falafel_req_ready),
       .is_alloc_i(is_alloc),
       .req_alloc_valid_i(req_alloc_valid),
 
@@ -126,7 +130,7 @@ module falafel_wrapper
       .mem_req_is_cas_o,  // 1 for cas, 0 for write
       .mem_req_addr_o,  // address
       .mem_req_data_o,  // write data
-      .mem_req_cas_exp_o,   // comp
+      .mem_req_cas_exp_o,  // comp
       .mem_rsp_val_i,  // resp valid
       .mem_rsp_rdy_o,  // falafel ready
       .mem_rsp_data_i

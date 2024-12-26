@@ -70,6 +70,7 @@ module falafel_core
 
   header_t header_to_get_lock;
   header_t header_from_lsu_d, header_from_lsu_q;
+  header_t first_header_ptr_d, first_header_ptr_q;
   header_t load_req_header;
   load_type_t load_type_d, load_type_q;
 
@@ -85,6 +86,7 @@ module falafel_core
   header_t free_target_header_d, free_target_header_q;
   header_t header_to_create_d, header_to_create_q;
   header_t header_to_adjust_link_d, header_to_adjust_link_q;
+  header_t adjusted_first_header_ptr;
 
   logic does_merge_right, does_merge_left, does_merge_both_sides;
   header_t right_header_d, right_header_q;
@@ -149,10 +151,12 @@ module falafel_core
     best_fit_header_prev_d = best_fit_header_prev_q;
     smallest_diff_d = smallest_diff_q;
 
+    first_header_ptr_d = first_header_ptr_q;
     alloc_target_header_d = alloc_target_header_q;
     free_target_header_d = free_target_header_q;
     header_to_create_d = header_to_create_q;
     header_to_adjust_link_d = header_to_adjust_link_q;
+    adjusted_first_header_ptr = '0;
 
     does_merge_left = 0;
     does_merge_right = 0;
@@ -203,7 +207,7 @@ module falafel_core
       end
       REQ_ACQUIRE_LOCK: begin
         header_to_get_lock.addr = falafel_config_i.lock_ptr;
-        header_to_get_lock.size = falafel_config_i.lock_id;  // TODO
+        header_to_get_lock.size = falafel_config_i.lock_id;  // irregular header for lock key area
         send_req_to_lsu(.header_i(header_to_get_lock), .lsu_op_i(LOCK),
                         .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
@@ -222,7 +226,7 @@ module falafel_core
             core_op_d = CORE_LOAD_HEADER;
           end
           FREE_TARGET_HEADER: begin
-            load_req_header.addr = addr_to_free_q;
+            load_req_header.addr = addr_to_free_q - BLOCK_HEADER_SIZE;
             core_op_d = CORE_LOAD_FREE_TARGET_HEADER;
           end
           FREE_RIGHT_HEADER: begin
@@ -322,8 +326,15 @@ module falafel_core
         end
       end
       REQ_ADJUST_LINK: begin
-        if (header_to_adjust_link_q.addr == '0) begin
-          state_d = REQ_RELEASE_LOCK;
+        if (header_to_adjust_link_q.addr == '0) begin : adjusting_first_header_ptr
+          adjusted_first_header_ptr.addr = falafel_config_i.free_list_ptr;
+          adjusted_first_header_ptr.size = header_to_adjust_link_q.next_addr;  // irregular header for first header ptr area
+          if (lsu_ready_i) begin
+            send_req_to_lsu(.header_i(adjusted_first_header_ptr),
+                            .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR), .req_to_lsu_o(req_to_lsu_o));
+            state_d   = WAIT_RSP_FROM_LSU;
+            core_op_d = CORE_ADJUST_LINK;
+          end
         end else begin
           if (lsu_ready_i) begin
             send_req_to_lsu(.header_i(header_to_adjust_link_q), .lsu_op_i(EDIT_NEXT_ADDR),
@@ -338,7 +349,12 @@ module falafel_core
         // if ((addr_to_free_q > header_from_lsu_q.addr) &&
         // ((addr_to_free_q < header_from_lsu_q.next_addr) |
         // (header_from_lsu_q.next_addr == '0))) begin
-        if ((addr_to_free_q > header_from_lsu_q.addr) &&
+        if (addr_to_free_q < header_from_lsu_q.addr) begin  // first header
+          curr_header_d = first_header_ptr_q;
+          state_d = REQ_LOAD_HEADER;
+          load_type_d = FREE_TARGET_HEADER;
+        end
+        else if ((addr_to_free_q > header_from_lsu_q.addr) &&
         (addr_to_free_q < header_from_lsu_q.next_addr)) begin
           curr_header_d = header_from_lsu_q;
           state_d = REQ_LOAD_HEADER;
@@ -352,10 +368,10 @@ module falafel_core
       end
       FREE_CHECK_NEIGHBORS: begin
         free_target_header_d = header_from_lsu_q;
-        does_merge_right = (addr_to_free_q + BLOCK_HEADER_SIZE + free_target_header_d.size
+        does_merge_right = (addr_to_free_q + free_target_header_d.size
           == curr_header_q.next_addr);
         does_merge_left = (curr_header_q.addr + BLOCK_HEADER_SIZE + curr_header_q.size
-          == addr_to_free_q);
+          == (addr_to_free_q - BLOCK_HEADER_SIZE));
         does_merge_both_sides = does_merge_right && does_merge_left;
 
         if (does_merge_both_sides) begin
@@ -367,12 +383,12 @@ module falafel_core
           state_d = REQ_LOAD_HEADER;
           load_type_d = FREE_RIGHT_HEADER;
           header_to_adjust_link_d = curr_header_q;
-          header_to_adjust_link_d.next_addr = addr_to_free_q;
+          header_to_adjust_link_d.next_addr = addr_to_free_q - BLOCK_HEADER_SIZE;
         end else if (does_merge_left) begin
           core_op_d = CORE_MERGE_LEFT;
           state_d   = FREE_MERGE_NEIGHBOR;
         end else if (!does_merge_left && !does_merge_right) begin
-          header_to_create_d.addr = addr_to_free_q;
+          header_to_create_d.addr = addr_to_free_q - BLOCK_HEADER_SIZE;
           header_to_create_d.next_addr = header_from_lsu_q.next_addr;
           header_to_adjust_link_d.addr = header_from_lsu_q.addr;
           header_to_adjust_link_d.next_addr = header_to_create_d.addr;
@@ -391,7 +407,7 @@ module falafel_core
           end
           CORE_MERGE_RIGHT: begin
             right_header_d = header_from_lsu_q;
-            merged_block_header_d.addr = addr_to_free_q;
+            merged_block_header_d.addr = addr_to_free_q - BLOCK_HEADER_SIZE;
             merged_block_header_d.next_addr = right_header_d.next_addr;
             merged_block_header_d.size =
               right_header_d.size + free_target_header_q.size  + BLOCK_HEADER_SIZE;
@@ -426,7 +442,9 @@ module falafel_core
               load_type_d = FIRST_HEADER_ADDR;
             end
             CORE_LOAD_FIRST_HEADER_ADDR: begin
-              curr_header_d.addr = rsp_from_lsu_i.header.size;  // TODO
+              curr_header_d.addr = rsp_from_lsu_i.header.size;  // irregular header for first header ptr area
+              first_header_ptr_d.next_addr = rsp_from_lsu_i.header.size;  // irregular header for first header ptr area
+              // first_header_ptr_d.addr = falafel_config_i.free_list_ptr;
               state_d = REQ_LOAD_HEADER;
               load_type_d = SEARCH;
             end
@@ -506,6 +524,7 @@ module falafel_core
       best_fit_header_prev_q <= '0;
       smallest_diff_q <= '0;
 
+      first_header_ptr_q <= '0;
       alloc_target_header_q <= '0;
       free_target_header_q <= '0;
       header_to_create_q <= '0;
@@ -529,6 +548,7 @@ module falafel_core
       best_fit_header_prev_q <= best_fit_header_prev_d;
       smallest_diff_q <= smallest_diff_d;
 
+      first_header_ptr_q <= first_header_ptr_d;
       alloc_target_header_q <= alloc_target_header_d;
       free_target_header_q <= free_target_header_d;
       header_to_create_q <= header_to_create_d;
