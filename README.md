@@ -1,6 +1,6 @@
 # Falafel version2
 
-last update: Dec 10, 2024
+last update: Dec 26, 2024
 
 A hardware memory allocator; <br>
 this allocator supports 
@@ -12,7 +12,8 @@ this allocator supports
 - the devlopment log →　[dev_log.md](doc/dev_log/dev_log.md)
 - the documents → [readme.md](doc/README.md)
 
-## Setting up
+## Simulation (falafelv2 standalone)
+### Setting Up
 Falafel v2 uses [Verilator](https://verilator.org/guide/latest/#) (v5.008) for simulation and [Poetry](https://python-poetry.org/) to manage library version dependencies for running its testbench (we use Cocotb for running the simulation). <br>
 these days I prefer Poetry :) <br>
 
@@ -31,8 +32,12 @@ I reccomend using official installer. <br>
     source install-verilator.sh
     ```
 
-## Running the test
+### Running the Simulation
 ```bash
 cd dev
 make
 ```
+
+## Run within *Cohort*
+- working repository: `/home/akihokawada/December/cohort-private-save-12262024` in jura
+- commits in cohort: [cohort-private:akiho-integrate-falafelv2-tmp](https://github.com/pengwing-project/cohort-private/tree/akiho-integrate-falafelv2-tmp)

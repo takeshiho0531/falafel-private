@@ -10,3 +10,9 @@
 - Dec 8: allocation requests can now be processed within the cohort under bare-metal conditions (with the mmu deactivated); enabling `swi_gc_wf_bench.c` to run (spsc) @[a30decc](https://github.com/takeshiho0531/falafel-private/tree/c5dfd09a261dcbb735852c8c219cec16338f4202)
 - Dec 9: allocation requests can now be processed within with the mmu activated; enabling `swi_gc_wf_bench.c` to run (spsc) @[c5dfd09](https://github.com/takeshiho0531/falafel-private/tree/c5dfd09a261dcbb735852c8c219cec16338f4202) <br>/ `cohort-private` @[24b580d
 ](https://github.com/pengwing-project/cohort-private/commit/24b580d0831a93e1a45612758924258fdd29164e)
+
+- Dec 18: succeeded in making falafelv2 work on fpga(an allocation request); enabling `swi_gc_wf_bench.c` to run (spsc) @[8e65fa7](https://github.com/takeshiho0531/falafel-private/tree/8e65fa766a2c0dce988f6193a429acf09c33fcb2) <br>/ `cohort-private` @[bd7aa96
+](https://github.com/pengwing-project/cohort-private/tree/bd7aa9658fa7ea0409b6d1b92f30a312503eddf5)
+
+- Dec 26: succeeded in making falafelv2 work on fpga(an allocation requests & a free request); enabling `swi_gc_wf_bench.c` to run (spsc) @[5fe80cc](https://github.com/takeshiho0531/falafel-private/tree/5fe80cc6501b2f6427a16aa2aee85f1ce0f62ae5) <br>/ `cohort-private` @[c9bf120
+](https://github.com/pengwing-project/cohort-private/tree/c9bf12084d516de533e633204fb6377b2492169c)
