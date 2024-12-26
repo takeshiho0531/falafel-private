@@ -207,7 +207,7 @@ module falafel_core
       end
       REQ_ACQUIRE_LOCK: begin
         header_to_get_lock.addr = falafel_config_i.lock_ptr;
-        header_to_get_lock.size = falafel_config_i.lock_id;  // TODO
+        header_to_get_lock.size = falafel_config_i.lock_id;  // irregular header for lock key area
         send_req_to_lsu(.header_i(header_to_get_lock), .lsu_op_i(LOCK),
                         .req_to_lsu_o(req_to_lsu_o));
         if (lsu_ready_i) begin
@@ -328,8 +328,7 @@ module falafel_core
       REQ_ADJUST_LINK: begin
         if (header_to_adjust_link_q.addr == '0) begin : adjusting_first_header_ptr
           adjusted_first_header_ptr.addr = falafel_config_i.free_list_ptr;
-          adjusted_first_header_ptr.next_addr = header_to_adjust_link_q.next_addr;
-          adjusted_first_header_ptr.size = header_to_create_q.addr;  // TODO
+          adjusted_first_header_ptr.size = header_to_adjust_link_q.next_addr;  // irregular header for first header ptr area
           if (lsu_ready_i) begin
             send_req_to_lsu(.header_i(adjusted_first_header_ptr),
                             .lsu_op_i(EDIT_SIZE_AND_NEXT_ADDR), .req_to_lsu_o(req_to_lsu_o));
@@ -350,7 +349,7 @@ module falafel_core
         // if ((addr_to_free_q > header_from_lsu_q.addr) &&
         // ((addr_to_free_q < header_from_lsu_q.next_addr) |
         // (header_from_lsu_q.next_addr == '0))) begin
-        if (addr_to_free_q < header_from_lsu_q.addr) begin // first header
+        if (addr_to_free_q < header_from_lsu_q.addr) begin  // first header
           curr_header_d = first_header_ptr_q;
           state_d = REQ_LOAD_HEADER;
           load_type_d = FREE_TARGET_HEADER;
@@ -443,8 +442,8 @@ module falafel_core
               load_type_d = FIRST_HEADER_ADDR;
             end
             CORE_LOAD_FIRST_HEADER_ADDR: begin
-              curr_header_d.addr = rsp_from_lsu_i.header.size;  // TODO
-              first_header_ptr_d.next_addr = rsp_from_lsu_i.header.size;  // TODO
+              curr_header_d.addr = rsp_from_lsu_i.header.size;  // irregular header for first header ptr area
+              first_header_ptr_d.next_addr = rsp_from_lsu_i.header.size;  // irregular header for first header ptr area
               // first_header_ptr_d.addr = falafel_config_i.free_list_ptr;
               state_d = REQ_LOAD_HEADER;
               load_type_d = SEARCH;
